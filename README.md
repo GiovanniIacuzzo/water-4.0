@@ -1,6 +1,6 @@
 # 💧 WATER 4.0 – Predizione delle Perdite Idriche con LSTM Ottimizzata tramite CPSO
 
-WATER 4.0 è un progetto di ricerca orientato alla previsione continua delle perdite idriche in reti di distribuzione, tramite l’impiego di una rete neurale LSTM (Long Short-Term Memory) ottimizzata attraverso un algoritmo di ottimizzazione numerica chiamato Particle Swarm Optimization Continuous (CPSO).
+WATER 4.0 è un progetto di ricerca orientato alla previsione continua delle perdite idriche in reti di distribuzione, tramite l’impiego di una rete neurale LSTM (Long Short-Term Memory) ottimizzata attraverso un algoritmo di ottimizzazione numerica chiamato Continuous Particle Swarm Optimization (CPSO).
 
 ---
 
@@ -60,7 +60,7 @@ Il dataset utilizzato proviene dalla competizione internazionale **BattLeDIM 202
 4. **Livelli (Levels)** – 1 serbatoio (m)
 5. **Perdite (Leakages)** – perdite simulate (m³/h)
 
-> Dati registrati ogni **5 minuti**, per un intero anno (2018).
+> Dati registrati ogni **5 minuti**, per due anni (2018-2019).
 
 ---
 
