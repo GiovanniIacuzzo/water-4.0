@@ -1,0 +1,55 @@
+## Modello Predittivo e Scelte Metodologiche
+L’obiettivo principale di questo studio è la predizione della quantità di perdita idrica all’interno di una rete di 
+distribuzione, a partire da misurazioni storiche relative a domande, pressioni, flussi e livelli. Tale scelta è 
+motivata dalla necessità, particolarmente rilevante in contesti urbani complessi, di anticipare e quantificare le 
+perdite in modo da migliorare l’efficienza del sistema e ridurre i tempi di intervento. Mentre molti approcci 
+tradizionali si focalizzano sulla localizzazione di eventi di perdita già accaduti, il nostro intento è più ambizioso: 
+prevedere in modo continuo l’evoluzione della perdita nel tempo, come una variabile dinamica e indicativa dello stato 
+della rete.
+
+## Scelta della variabile target
+
+La variabile predetta è la quantità totale di perdita (in m³/h) calcolata come somma delle perdite simulate su tutti i 
+link della rete, per ciascun timestamp. Si è deciso di affrontare il problema come una regressione univariata, in 
+quanto l’informazione più diretta e utile per i gestori del sistema è proprio la quantità complessiva di acqua persa, 
+anziché una semplice classificazione binaria di presenza/assenza di perdita. Tale approccio consente inoltre di modellare 
+la severità dell’evento, non solo la sua occorrenza.
+
+## Architettura del modello: LSTM (Long Short-Term Memory)
+
+Per affrontare un compito di previsione su sequenze temporali multivariate, si è optato per una rete neurale LSTM, una 
+variante delle Reti Neurali Ricorrenti (RNN) che, grazie alla sua struttura interna basata su gate di memoria, è in grado 
+di catturare dipendenze temporali a lungo termine, minimizzando i problemi di vanishing gradient tipici delle RNN 
+tradizionali. Questo aspetto è particolarmente rilevante nel contesto dei sistemi idrici, dove le dinamiche di perdita 
+possono dipendere da fluttuazioni lente ma persistenti della pressione o della domanda.
+
+## L’architettura implementata è composta da:
+
+- Due strati LSTM empilati (stacked LSTM) con 128 unità ciascuno, capaci di apprendere rappresentazioni temporali complesse.
+- Un livello di dropout intermedio per la regolarizzazione e la prevenzione dell’overfitting.
+- Un layer fully connected finale che restituisce un singolo valore continuo, corrispondente alla quantità di perdita 
+prevista.
+Predizione e formato dell’input
+
+Il modello riceve in input una sequenza temporale multivariata di lunghezza fissa seq_len, che rappresenta una finestra 
+mobile del passato. Ogni campione di input ha quindi dimensione (seq_len, n_features), dove n_features corrisponde al 
+numero totale di sensori (domande, pressioni, flussi, livelli) considerati.
+
+La predizione avviene sul valore di perdita al tempo immediatamente successivo rispetto all’ultima osservazione della 
+finestra.
+La scelta del modello LSTM è motivata da diversi fattori:
+
+- Sequenzialità e dipendenza temporale: i dati idrici mostrano comportamenti stagionali, giornalieri e settimanali. 
+Le LSTM sono note per saper catturare efficacemente queste strutture.
+- Robustezza a input rumorosi: le misure nei sistemi reali (e anche simulati) possono essere affette da rumore o 
+variazioni locali. La struttura LSTM è in grado di filtrare queste fluttuazioni e concentrarsi sulle tendenze rilevanti.
+- Scalabilità: la rete può essere facilmente adattata a dataset più estesi, a più anni, o a sistemi idrici reali, 
+mantenendo la stessa struttura generale.
+- Generalizzabilità: predire la perdita aggregata consente una visione sistemica e può essere facilmente integrata in 
+sistemi di early warning o controllo predittivo.
+
+La modellazione delle perdite come una variabile continua e la sua predizione tramite modelli LSTM rappresentano un 
+passo avanti rispetto ad approcci più semplici basati su soglie o regole, e offrono una base solida per applicazioni 
+future orientate all’ottimizzazione operativa delle reti idriche. La pipeline di preprocessing e la struttura del 
+modello sono concepite in modo da poter essere estese facilmente ad altri scenari o reti, consentendo un’elevata 
+flessibilità nell’applicazione del metodo.

@@ -1,0 +1,45 @@
+data:
+  demand_files:
+    - data/2018_SCADA_Demands.csv
+    - data/2019_SCADA_Demands.csv
+  flow_files:
+    - data/2018_SCADA_Flows.csv
+    - data/2019_SCADA_Flows.csv
+  level_files:
+    - data/2018_SCADA_Levels.csv
+    - data/2019_SCADA_Levels.csv
+  pressure_files:
+    - data/2018_SCADA_Pressures.csv
+    - data/2019_SCADA_Pressures.csv
+  leakage_files:
+    - data/2018_Leakages.csv
+    - data/2019_Leakages.csv
+
+dataset:
+  seq_len: 288
+  seq_per_day: 288
+  task_type: regression
+  forecast_horizon: 12
+
+split:
+  train_days: 365
+  val_days: 14
+  val_overlap_days: 7
+
+model:
+  hidden_size: 128
+  num_layers: 2
+  dropout: 0.3
+
+training:
+  batch_size: 64
+  lr: 0.1
+  epochs: 50
+  patience: 5
+  model_save_path: best_model.pth
+
+comet:
+  api_key: "hH2SAakLm4RU5yJggbSxDAQ6v"
+  project_name: "WATER"
+  workspace: "giovanniiacuzzo2"
+  experiment_name: "WATER 4.0/test CPSO"

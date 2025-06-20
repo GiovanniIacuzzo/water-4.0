@@ -1,0 +1,81 @@
+## Descrizione Dataset
+
+Il presente lavoro si basa sull’impiego del dataset fornito dalla competizione internazionale BattLeDIM 2020 
+(Battle of the Leakage Detection and Isolation Methods), promossa con l’obiettivo di stimolare lo sviluppo di 
+metodologie avanzate per il monitoraggio e la rilevazione di perdite all’interno di sistemi di distribuzione 
+idrica. Il dataset è stato generato a partire da simulazioni del modello di rete L-Town, una rete idrica virtuale 
+altamente dettagliata e ispirata a condizioni operative realistiche.
+
+Il dataset contiene misurazioni storiche per due anni consecutivi (2018 e 2019), ma in questo studio ci si è 
+focalizzati esclusivamente sull’anno 2018. I dati sono registrati con una frequenza temporale elevata, ovvero 
+ogni 5 minuti, offrendo una risoluzione temporale fine che consente di cogliere con precisione le dinamiche 
+del sistema.
+
+Le variabili disponibili possono essere suddivise in cinque categorie principali:
+
+1) Domande (Demands): rappresentano i flussi di consumo espressi in litri/ora, rilevati da 82 dispositivi di 
+lettura automatica (AMR) distribuiti nei nodi della rete.
+
+2)Flussi (Flows): misurazioni di portata in m³/h ottenute da 3 sensori di flusso posizionati su specifici 
+collegamenti idraulici.
+
+3)Livelli (Levels): misure dei livelli d’acqua in metri, raccolte da un sensore collocato in un serbatoio.
+
+4)Pressioni (Pressures): misurazioni della pressione, espresse anch’esse in metri, fornite da 33 sensori 
+distribuiti in vari punti della rete.
+
+5)Perdite (Leakages): serie temporali delle perdite simulate in m³/h su una selezione di link, utilizzate in 
+questo studio come variabile target per l’addestramento del modello predittivo.
+
+6)Tutti i file sono forniti in formato CSV, con intestazioni di colonna che corrispondono agli identificativi 
+dei nodi o dei link nel modello idraulico sottostante, sviluppato in EPANET.
+
+## Preprocessing e Costruzione del Dataset
+
+Per integrare e preparare i dati per l’addestramento del modello, è stato sviluppato un modulo dedicato 
+(dataset.py), che si occupa del preprocessing e della costruzione del dataset in forma compatibile con 
+PyTorch. Il flusso di preprocessing si articola come segue:
+
+- Parsing temporale: ogni file viene letto mantenendo il timestamp come indice temporale. Questo consente 
+l’allineamento preciso delle serie temporali.
+
+- Integrazione delle misure: i dati relativi a domande, flussi, livelli e pressioni vengono concatenati 
+orizzontalmente in un’unica matrice temporale multivariata.
+
+- Pulizia dei dati: eventuali righe contenenti valori mancanti vengono eliminate per garantire coerenza tra 
+le variabili di input e la variabile target.
+
+- Costruzione del target:
+- - In modalità regressiva (adottata in questo studio), il target viene calcolato come somma delle perdite su 
+tutti i link per ciascun istante temporale.
+- - È supportata anche una modalità classificatoria, nella quale si considera la sola presenza/assenza di perdite, 
+ma non è stata utilizzata in questa fase della ricerca.
+
+- Normalizzazione: sia gli input che il target vengono normalizzati separatamente tramite StandardScaler di 
+scikit-learn, al fine di migliorare la stabilità numerica e la velocità di convergenza durante il training.
+
+- Segmentazione temporale: i dati vengono trasformati in campioni composti da sequenze temporali di lunghezza 
+fissa (seq_len). Ogni campione è costituito da una finestra temporale di seq_len istanti come input, e dal 
+valore della perdita al tempo successivo come output.
+
+
+## Obiettivo del Modello e Struttura del Dataset
+
+Lo scopo dell’apprendimento automatico in questo contesto è prevedere la quantità di perdita nel sistema a 
+partire dall’evoluzione passata delle variabili misurate. Per fare ciò, è stato impiegato un modello basato 
+su reti neurali ricorrenti (RNN), e in particolare un'architettura LSTM (Long Short-Term Memory), 
+particolarmente adatta alla modellazione di sequenze temporali con dipendenze a lungo termine.
+
+Formalmente, il problema può essere espresso come segue:
+
+Input: una sequenza temporale multivariata di lunghezza T, composta da F variabili (features).
+Output: il valore predetto della perdita al tempo T + 1.
+In termini di dimensioni, ciascun input ha forma (T, F), mentre l’output è un singolo valore continuo. Si 
+tratta quindi di un task di regressione univariata con input multivariati.
+
+## Considerazioni Finali
+La combinazione di elevata frequenza di campionamento, alta dimensionalità e eterogeneità delle variabili 
+rende questo dataset particolarmente interessante e sfidante per modelli predittivi. L’approccio di 
+preprocessing descritto consente di strutturare i dati in modo tale da essere pienamente compatibili con 
+architetture neurali moderne orientate alla sequenza, facilitando così l’addestramento e la valutazione di 
+modelli deep learning per il monitoraggio delle perdite idriche.
