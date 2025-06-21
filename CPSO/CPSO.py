@@ -120,7 +120,7 @@ class CPSO:
                 new_positions += self.epsilon * torch.randn_like(new_positions)
                 new_velocities = c1 * lambda1 * exp(lambda1 * (t)) + c2 * lambda2 * exp(lambda2 * (t))
 
-            new_positions = torch.clamp(new_positions, 0.1 * self.VarMin, 0.1 * self.VarMax)
+            new_positions = torch.clamp(new_positions, self.VarMin, self.VarMax)
             new_velocities = torch.clamp(new_velocities, 0.1 * self.VarMin, 0.1 * self.VarMax)
 
             self.positions = new_positions

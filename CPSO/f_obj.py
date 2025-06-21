@@ -1,3 +1,9 @@
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "4"
+os.environ["NUMEXPR_NUM_THREADS"] = "4"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
 import torch
 from tqdm import tqdm
 from models.lstm_model import LSTMPredictor
@@ -21,7 +27,7 @@ def objective_function(position_tensor, train_loader, val_loader, input_size, ou
         ).to(device)
 
         sampled_loader = list(itertools.islice(train_loader, 10))
-        val_loss = train_model_f(model, sampled_loader, n_epochs=5, lr=lr)
+        val_loss = train_model_f(model, sampled_loader, n_epochs=2, lr=lr)
 
         losses.append(val_loss)
 
