@@ -9,12 +9,10 @@ dependencies:
   - scikit-learn
   - matplotlib
   - seaborn
-  - pytorch
-  - torchvision
-  - torchaudio
   - pip
   - pip:
       - comet-ml
       - tqdm
-
+  - pytorch
+  - torchvision
   - torchaudio
