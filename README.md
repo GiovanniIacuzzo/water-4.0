@@ -118,7 +118,7 @@ WATER-4.0/
 
 ```bash
 conda env create -f environment.yml
-conda activate water4
+conda activate water-leakage-env
 ```
 
 2. **Avvia l'allenamento del modello**:
