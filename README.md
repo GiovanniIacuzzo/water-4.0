@@ -108,6 +108,8 @@ WATER-4.0/
 └── README.md
 ```
 
+![LSTM-CPSO_flowchart](LSTM-CPSO-MODEL.png)
+
 ---
 
 ## Requisiti e Setup
