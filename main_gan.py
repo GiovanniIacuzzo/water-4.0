@@ -23,7 +23,7 @@ if __name__ == "__main__":
     seq_len = 288
     forecast_horizon = 48
     noise_dim = 64
-    n_epochs = 1
+    n_epochs = 100
     lr = 1e-4
     lambda_reg = 10.0
     patience = 5
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         generator=G,
         X_cond=X_cond,
         noise_dim=noise_dim,
-        n_scenarios=10,
+        n_scenarios=3,
         batch_size=batch_size,
         save_path="scenarios.npy",
         plot_example=True
