@@ -21,13 +21,13 @@ L'approccio si articola in due fasi:
 
 ## 🧠 Architettura della Soluzione
 
-### 🌀 Generazione degli Scenari con GAN
+### Generazione degli Scenari con GAN
 
 - È stato addestrato un **modello GAN condizionato** per simulare variabili idrauliche multivariate coerenti con i dati storici reali.
 - Lo scopo è **espandere artificialmente il dataset** con scenari realistici e stocastici.
 - Gli scenari prodotti hanno la forma `(N_scenari, forecast_horizon, n_features)` e sono salvati come input per la LSTM.
 
-### 🔁 Predizione con LSTM
+### Predizione con LSTM
 
 - Una rete **LSTM bidirezionale con meccanismo di attenzione** viene impiegata per mappare ciascuno scenario generato in una previsione puntuale di leakage.
 - L'output finale è un valore continuo che rappresenta la **perdita idrica aggregata prevista per scenario**.
