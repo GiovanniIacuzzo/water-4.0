@@ -1,50 +1,71 @@
-# 💧 WATER 4.0 – Predizione delle Perdite Idriche con LSTM Ottimizzata tramite CPSO
+# 💧 WATER 4.0 – Predizione delle Perdite Idriche
 
-WATER 4.0 è un progetto di ricerca orientato alla previsione continua delle perdite idriche in reti di distribuzione, tramite l’impiego di una rete neurale LSTM (Long Short-Term Memory) ottimizzata attraverso un algoritmo di ottimizzazione numerica chiamato Continuous Particle Swarm Optimization (CPSO).
+WATER 4.0 è un progetto di ricerca orientato alla previsione delle perdite idriche in reti di distribuzione, mediante una pipeline che integra:
+
+- Un **modello generativo GAN** per la simulazione di scenari plausibili di variabili idrauliche.
+- Un modello **LSTM** per la stima della perdita idrica associata a ciascuno scenario.
+- Un’ottimizzazione numerica tramite **Continuous Particle Swarm Optimization (CPSO)** per il tuning della LSTM.
 
 ---
 
 ## 📌 Obiettivo del Progetto
 
-Predire in modo accurato e continuo la quantità di **acqua persa (m³/h)** nella rete idrica, sfruttando **misurazioni storiche multivariate** (pressioni, flussi, domande e livelli). Il modello si basa su:
+Predire in modo accurato e continuo la quantità di **acqua persa (m³/h)** nella rete idrica, sfruttando **scenari simulati multivariati** (pressioni, flussi, domande, livelli) generati da una **GAN condizionata**.
 
-- Un’architettura **LSTM deep learning** per modellare le dipendenze temporali.
-- Un algoritmo di ottimizzazione **CPSO (Continuous Particle Swarm Optimization)** per il tuning automatico degli iperparametri del modello.
+L'approccio si articola in due fasi:
+
+1. **Generazione di scenari realistici** tramite una rete **Generative Adversarial Network**.
+2. **Predizione della perdita** su ciascuno scenario tramite una rete **LSTM ottimizzata**.
 
 ---
 
-## Modello Predittivo
+## 🧠 Architettura della Soluzione
 
-### Architettura LSTM
+### 🌀 Generazione degli Scenari con GAN
 
-Il modello implementa:
+- È stato addestrato un **modello GAN condizionato** per simulare variabili idrauliche multivariate coerenti con i dati storici reali.
+- Lo scopo è **espandere artificialmente il dataset** con scenari realistici e stocastici.
+- Gli scenari prodotti hanno la forma `(N_scenari, forecast_horizon, n_features)` e sono salvati come input per la LSTM.
 
-- **2 strati LSTM** (stacked) da 128 unità ciascuno.
-- **Dropout** intermedio per la regolarizzazione.
-- **Dense layer finale** per produrre un output continuo.
+### 🔁 Predizione con LSTM
 
-L’input è una sequenza multivariata temporale (`(seq_len, n_features)`), l’output è la **perdita predetta al tempo t+1**.
+- Una rete **LSTM bidirezionale con meccanismo di attenzione** viene impiegata per mappare ciascuno scenario generato in una previsione puntuale di leakage.
+- L'output finale è un valore continuo che rappresenta la **perdita idrica aggregata prevista per scenario**.
+- La rete è stata ottimizzata tramite **CPSO** su iperparametri chiave (numero layer, neuroni, learning rate, dropout).
 
-### Scelta della variabile target
+---
 
-La perdita è calcolata come **somma delle perdite simulate su tutti i link** della rete, per ciascun timestamp. Il task è trattato come **regressione univariata**.
+## 📊 Vantaggi dell'approccio GAN + LSTM
 
-### Vantaggi dell'approccio LSTM
+- **Aumento virtuale dei dati (Data Augmentation)** senza necessità di simulazioni idrauliche computazionalmente costose.
+- **Stima probabilistica** della perdita idrica tramite simulazione di molteplici scenari e analisi della distribuzione delle predizioni.
+- **Separazione chiara dei compiti**:
+  - La GAN genera il "futuro possibile".
+  - La LSTM valuta il rischio (leakage) associato a ciascuna possibilità.
+- **Flessibilità e scalabilità** verso scenari reali, anche in condizioni di scarsità di dati osservati.
 
-- Modellazione di dinamiche stagionali e giornaliere.
-- Resistenza al rumore di misura.
-- Scalabilità a reti reali o dataset più ampi.
-- Facilità di integrazione in sistemi di early warning o controllo predittivo.
+---
+
+## Modello Predittivo LSTM
+
+### Architettura
+
+- **LSTM bidirezionale** con 2 layer.
+- **Dropout e BatchNorm** per regolarizzazione.
+- **Meccanismo di attenzione** per pesare temporalmente le informazioni più rilevanti.
+- **Fully connected finale** per output continuo.
+
+L’input è un tensore sequenziale (`(T, n_features)`) mediato su più simulazioni dello stesso scenario. L’output è un **valore continuo** corrispondente alla perdita prevista.
 
 ---
 
 ## Ottimizzazione con Continuous CPSO
 
-Il tuning degli iperparametri LSTM è effettuato tramite **CPSO**, in grado di:
+Il tuning della rete LSTM è effettuato tramite **CPSO**, in grado di:
 
-- Esplorare lo spazio continuo degli iperparametri (es. learning rate, dimensione dei layer, dropout).
-- Accelerare la convergenza tramite meccanismi evolutivi adattivi.
-- Garantire migliori performance rispetto al tuning manuale o con griglia.
+- Esplorare in modo efficiente lo spazio continuo degli iperparametri.
+- Adattare dinamicamente i parametri dello sciame.
+- Evitare minimi locali e migliorare la generalizzazione rispetto al tuning tradizionale.
 
 ---
 
@@ -60,7 +81,7 @@ Il dataset utilizzato proviene dalla competizione internazionale **BattLeDIM 202
 4. **Livelli (Levels)** – 1 serbatoio (m)
 5. **Perdite (Leakages)** – perdite simulate (m³/h)
 
-> Dati registrati ogni **5 minuti**, per due anni (2018-2019).
+> Dati registrati ogni **5 minuti**, per due anni (2018–2019).
 
 ---
 
@@ -74,6 +95,7 @@ A cura del modulo [`utils/dataset.py`](utils/dataset.py):
 - **Costruzione target**: somma delle perdite su tutti i link
 - **Normalizzazione**: via `StandardScaler` (Scikit-learn)
 - **Segmentazione sequenziale**: sliding window (`seq_len`, `target`)
+- **Media su simulazioni**: aggregazione dei dati generati da GAN
 
 ---
 
@@ -82,26 +104,34 @@ A cura del modulo [`utils/dataset.py`](utils/dataset.py):
 ```bash
 WATER-4.0/
 │
-├── CPSO/                   # Cartella Ottimizzazione
-│ ├── CPSO.py               # Algoritmo di ottimizzazione CPSO
-│ ├── f_obj.py              # Funzione obiettivo + Train
-│ └── ottimizzazione.py     # File che esegue l'ottimizzazione
+├── CPSO/                    # Cartella Ottimizzazione
+│ ├── CPSO.py                # Algoritmo di ottimizzazione CPSO
+│ ├── f_obj.py               # Funzione obiettivo + Train
+│ └── ottimizzazione.py      # File che esegue l'ottimizzazione
 │
-├── data/                   # Cartella dei dati
+├── data/                    # Cartella dei dati
 │
-├── models/                 # Cartella del modello 
-│ └── lstm_model.py         # Definizione della rete LSTM
+├── models/                  # Cartella del modello 
+│ ├── lstm_model.py          # Definizione della rete LSTM
+│ ├── generatore.py          # Generatore del modello GAN
+│ └── discriminatore.py      # Discriminatore del modello GAN
 │
-├── utils/                  # Cartella utils
-│ ├── dataset.py            # Preprocessing e dataset loader
-│ ├── evaluate.py           # Metriche di valutazione
-│ ├── plot.py               # Visualizzazioni
-│ └── train.py              # Ciclo di training
+├── utils/                   # Cartella utils
+│ ├── dataset.py             # Preprocessing e dataset loader LSTM MODEL
+│ ├── evaluate.py            # Metriche di valutazione
+│ ├── plot.py                # Visualizzazioni
+│ ├── train.py               # Ciclo di training LSTM MODEL
+│ │
+│ ├── dataset_gan.py         # Preprocessing e dataset loader GAN MODEL
+│ ├── generate_scenario.py   # Genera gli scenari possibili
+│ └── train_gan.py           # Ciclo di training GAN MODEL 
 │
-├── config.yaml             # Parametri del modello
-├── environment.yml         # Dipendenze Conda
+├── config.yaml              # Parametri del modello
+├── environment.yml          # Dipendenze Conda
 │
-├── main.py                 # Script principale per esecuzione
+├── main_lstm.py             # Script principale per esecuzione della LSTM
+├── main_gan.py              # Script principale per esecuzione della GAN
+├── run_lstm_on_scenarios.py # Script principale per esecuzione della GAN
 │
 ├── .gitignore
 │
@@ -123,7 +153,19 @@ conda activate water-leakage-env
 
 2. **Avvia l'allenamento del modello**:
 ```bash
-python main.py
+python main_lstm.py
 ```
+
+3. **Genera uno scenario allenando la GAN**:
+```bash
+python main_gan.py
+```
+
+4. **Usando il modello LSTM predici i leakages**:
+```bash
+python run_lstm_on_scenarios.py
+```
+---
+
 ### Contatti
 Per domande: [giovanni.iacuzzo@unikorestudent.it](mailto:giovanni.iacuzzo@unikorestudent.it)
