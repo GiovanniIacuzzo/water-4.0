@@ -4,6 +4,7 @@ os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["MKL_NUM_THREADS"] = "4"
 os.environ["NUMEXPR_NUM_THREADS"] = "4"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
+
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
@@ -62,5 +63,5 @@ class LTownLeakageDataset(Dataset):
 
     def __getitem__(self, idx):
         x = self.inputs[idx:idx + self.seq_len]
-        y = self.targets[idx + self.seq_len]
+        y = self.targets[idx:idx + self.seq_len]
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)

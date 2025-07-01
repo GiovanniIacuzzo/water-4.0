@@ -7,8 +7,8 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
 import torch
 from tqdm import tqdm
 from models.lstm_model import LSTMPredictor
-import itertools
-from utils.train import train_model
+import torch.nn as nn
+import numpy as np
 
 def objective_function(position_tensor, train_loader, val_loader, input_size, output_size, device="cpu"):
     losses = []
@@ -27,17 +27,68 @@ def objective_function(position_tensor, train_loader, val_loader, input_size, ou
             dropout=dropout
         ).to(device)
 
-        val_loss = train_model(
+        val_loss = train_model_optimization(
                         model,
                         train_loader,
                         val_loader,
-                        n_epochs=10,
+                        n_epochs=1,
                         lr=lr,
                         experiment=None,
-                        patience=3
+                        patience=1
                     )
 
         losses.append(val_loss)
 
-    return torch.tensor(losses, device=device)
+    return torch.tensor(losses, dtype=torch.float32, device=device)
 
+def train_model_optimization(model, train_loader, val_loader, n_epochs=10, lr=1e-3, patience=3, experiment=None):
+    device = next(model.parameters()).device
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    loss_fn = nn.MSELoss()
+
+    best_loss = np.inf
+    epochs_no_improve = 0
+    best_model_state = None
+
+    for epoch in range(n_epochs):
+        model.train()
+        progress_bar = tqdm(train_loader, desc=f"[Train] Epoch {epoch+1}/{n_epochs}", leave=False)
+        for x_batch, y_batch in progress_bar:
+            x_batch = x_batch.to(device)  # [B, T, in]
+            y_batch = y_batch.to(device)  # [B, T, out]
+
+            optimizer.zero_grad()
+            y_pred = model(x_batch)  # [B, T, out]
+            loss = loss_fn(y_pred, y_batch)
+            loss.backward()
+            optimizer.step()
+
+        # Validation
+        model.eval()
+        val_losses = []
+        with torch.no_grad():
+            for x_val, y_val in val_loader:
+                x_val = x_val.to(device)
+                y_val = y_val.to(device)
+                y_pred = model(x_val)
+                val_loss = loss_fn(y_pred, y_val)
+                val_losses.append(val_loss.item())
+
+        avg_val_loss = np.mean(val_losses)
+
+        if experiment:
+            experiment.log_metric("val_loss", avg_val_loss)
+
+        if avg_val_loss < best_loss:
+            best_loss = avg_val_loss
+            best_model_state = model.state_dict()
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+            if epochs_no_improve >= patience:
+                break
+
+    if best_model_state:
+        model.load_state_dict(best_model_state)
+
+    return best_loss

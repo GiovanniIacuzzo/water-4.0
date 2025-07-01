@@ -22,7 +22,6 @@ def optimize_with_cpso(train_loader, val_loader, input_size, output_size, experi
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
-    print(f"Device utilizzato: {device}")
 
     def wrapped_objective_tensor(x_tensor):
         return objective_function(
@@ -36,8 +35,8 @@ def optimize_with_cpso(train_loader, val_loader, input_size, output_size, experi
 
     # Opzioni custom per CPSO, personalizzabili
     options = {
-        'particles': 20,
-        'sub_interval': 20,
+        'particles': 1,
+        'sub_interval': 1,
         'mu_max': 0.9,
         'mu_min': 0.4,
         'dt': 3,

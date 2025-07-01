@@ -1,14 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 import seaborn as sns
+import torch
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-import matplotlib.pyplot as plt
-import numpy as np
-import seaborn as sns
-import torch
 
 def plot_predictions_vs_truth(test_targets, test_preds, n_plot=300, title="Predictions vs Ground Truth", ylabel="Leakage", experiment=None):
+    # Reshape sicuro
+    test_preds = np.squeeze(test_preds)
+    test_targets = np.squeeze(test_targets)
+
+    # Assicura che siano 1D o 2D
+    if test_preds.ndim == 1:
+        test_preds = test_preds[:, np.newaxis]
+    if test_targets.ndim == 1:
+        test_targets = test_targets[:, np.newaxis]
+
     plt.figure(figsize=(12, 5))
     plt.plot(test_targets[:n_plot], label="True", linewidth=2)
     plt.plot(test_preds[:n_plot], label="Predicted", linestyle="--")
@@ -23,8 +29,24 @@ def plot_predictions_vs_truth(test_targets, test_preds, n_plot=300, title="Predi
 
     plt.show()
 
+
 def plot_error_heatmap(test_targets, test_preds, title="Absolute Error Heatmap", experiment=None):
+    # Reshape sicuro
+    test_targets = np.squeeze(test_targets)
+    test_preds = np.squeeze(test_preds)
+
+    if test_targets.ndim == 1:
+        test_targets = test_targets[:, np.newaxis]
+    if test_preds.ndim == 1:
+        test_preds = test_preds[:, np.newaxis]
+
+    # Calcolo errore
     errors = np.abs(test_targets - test_preds)
+
+    # Controlla 2D
+    if errors.ndim != 2:
+        raise ValueError(f"Expected 2D error array for heatmap, got shape {errors.shape}")
+
     plt.figure(figsize=(10, 4))
     sns.heatmap(errors.T, cmap="Blues", cbar=True)
     plt.title(title)
@@ -37,6 +59,7 @@ def plot_error_heatmap(test_targets, test_preds, title="Absolute Error Heatmap",
 
     plt.show()
 
+
 def evaluate_model(model, test_loader, experiment=None, name_prefix="Test", n_plot=300):
     # Scelta del device
     if torch.cuda.is_available():
@@ -45,7 +68,6 @@ def evaluate_model(model, test_loader, experiment=None, name_prefix="Test", n_pl
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
-    print(f"Device utilizzato: {device}")
     
     model = model.to(device)
     model.eval()
@@ -60,13 +82,22 @@ def evaluate_model(model, test_loader, experiment=None, name_prefix="Test", n_pl
             test_preds.append(y_pred.cpu().numpy())
             test_targets.append(y_test.cpu().numpy())
 
-    test_preds = np.vstack(test_preds)
-    test_targets = np.vstack(test_targets)
+    test_preds = np.concatenate(test_preds, axis=0)
+    test_targets = np.concatenate(test_targets, axis=0)
+
+    # Flatten per metriche
+    test_preds_flat = np.squeeze(test_preds)
+    test_targets_flat = np.squeeze(test_targets)
+
+    if test_preds_flat.ndim == 1:
+        test_preds_flat = test_preds_flat[:, np.newaxis]
+    if test_targets_flat.ndim == 1:
+        test_targets_flat = test_targets_flat[:, np.newaxis]
 
     # Metriche
-    mae = mean_absolute_error(test_targets, test_preds)
-    rmse = np.sqrt(mean_squared_error(test_targets, test_preds))
-    r2 = r2_score(test_targets, test_preds)
+    mae = mean_absolute_error(test_targets_flat, test_preds_flat)
+    rmse = np.sqrt(mean_squared_error(test_targets_flat, test_preds_flat))
+    r2 = r2_score(test_targets_flat, test_preds_flat)
 
     print(f"{name_prefix} | MAE: {mae:.4f} | RMSE: {rmse:.4f} | R²: {r2:.4f}")
 
@@ -75,10 +106,7 @@ def evaluate_model(model, test_loader, experiment=None, name_prefix="Test", n_pl
         experiment.log_metric(f"{name_prefix}_RMSE", rmse)
         experiment.log_metric(f"{name_prefix}_R2", r2)
 
-        # Log predizioni vs target
         plot_predictions_vs_truth(test_targets, test_preds, n_plot=n_plot, title=f"{name_prefix} Predictions vs Ground Truth", experiment=experiment)
-
-        # Log Heatmap errore assoluto
         plot_error_heatmap(test_targets, test_preds, title=f"{name_prefix} Absolute Error Heatmap", experiment=experiment)
 
     return mae, rmse, r2

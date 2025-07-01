@@ -150,7 +150,7 @@ class CPSO:
                 writer = csv.writer(f)
                 writer.writerow([it + 1, self.global_best_cost])
 
-            if (it + 1) % self.print_every == 0 or it == 0:
+            if (self.print_every and (it + 1) % self.print_every == 0) or it == 0:
                 print(f"[Iter {it + 1:03d}] Best Cost: {self.global_best_cost:.6f}")
 
             self.save_checkpoint("cpso_checkpoint.pt", iteration=it + 1)

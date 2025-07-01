@@ -5,6 +5,7 @@ os.environ["MKL_NUM_THREADS"] = "4"
 os.environ["NUMEXPR_NUM_THREADS"] = "4"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
 from tqdm import tqdm
+import pandas as pd
 import torch
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -72,16 +73,19 @@ def train_model(
                 val_preds.append(y_pred.cpu().numpy())
                 val_targets.append(y_val.cpu().numpy())
 
-        val_preds = np.vstack(val_preds)
-        val_targets = np.vstack(val_targets)
-        val_loss = mean_squared_error(val_targets, val_preds)
-        val_losses.append(val_loss)
+        val_preds = np.concatenate(val_preds, axis=0)  # (batch, seq_len, output_size)
+        val_targets = np.concatenate(val_targets, axis=0)
+
+        # Flatten per le metriche
+        val_preds_flat = val_preds.reshape(-1, val_preds.shape[-1])
+        val_targets_flat = val_targets.reshape(-1, val_targets.shape[-1])
+
+        val_loss = mean_squared_error(val_targets_flat, val_preds_flat)
+        mae = mean_absolute_error(val_targets_flat, val_preds_flat)
+        rmse = np.sqrt(val_loss)
+        r2 = r2_score(val_targets_flat, val_preds_flat)
 
         scheduler.step()
-
-        mae = mean_absolute_error(val_targets, val_preds)
-        rmse = np.sqrt(val_loss)
-        r2 = r2_score(val_targets, val_preds)
 
         maes.append(mae)
         rmses.append(rmse)
@@ -122,12 +126,17 @@ def train_model(
         experiment.log_other("total_epochs", actual_epochs)
 
         def plot_and_log(y_values, title, ylabel, metric_name):
+            actual_epochs = len(y_values)
+            x_values = np.arange(1, actual_epochs + 1)
+            df = pd.DataFrame({'Epoch': x_values, 'Loss': y_values})
+
             plt.figure(figsize=(8, 4))
-            sns.lineplot(x=np.arange(1, actual_epochs + 1), y=y_values)
+            sns.lineplot(data=df, x='Epoch', y='Loss', marker="o")
             plt.title(title)
             plt.xlabel("Epoch")
             plt.ylabel(ylabel)
             plt.grid(True)
+            plt.tight_layout()
             experiment.log_figure(figure_name=metric_name, figure=plt)
             plt.close()
 
@@ -136,22 +145,16 @@ def train_model(
 
         # Plot finale
         n_plot = min(300, len(val_targets))
+        val_preds_flat = val_preds.reshape(-1, val_preds.shape[-1])
+        val_targets_flat = val_targets.reshape(-1, val_targets.shape[-1])
+
         plt.figure(figsize=(12, 5))
-        plt.plot(val_targets[:n_plot], label='True', linewidth=2)
-        plt.plot(val_preds[:n_plot], label='Predicted', linestyle='--')
+        plt.plot(val_targets_flat[:n_plot], label='True', linewidth=2)
+        plt.plot(val_preds_flat[:n_plot], label='Predicted', linestyle='--')
         plt.title("Validation Predictions vs. Ground Truth")
         plt.xlabel("Sample")
         plt.ylabel("Leakage")
         plt.legend()
         plt.tight_layout()
         experiment.log_figure(figure_name="Final Prediction vs Ground Truth", figure=plt)
-        plt.close()
-
-        errors = np.abs(val_targets - val_preds)
-        plt.figure(figsize=(10, 4))
-        sns.heatmap(errors.T, cmap="Reds", cbar=True)
-        plt.title("Absolute Error Heatmap (Validation Set)")
-        plt.xlabel("Time Step")
-        plt.ylabel("Output Dimension" if errors.shape[1] > 1 else "Leakage")
-        experiment.log_figure(figure_name="Error Heatmap", figure=plt)
         plt.close()
