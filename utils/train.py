@@ -17,7 +17,7 @@ def train_model(
         val_loader,
         n_epochs=50,
         lr=1e-3,
-        save_path="best_model.pth",
+        save_path="best_lstm_model.pth",
         experiment=None,
         patience=4
     ):
@@ -28,7 +28,6 @@ def train_model(
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
-    print(f"Device utilizzato: {device}")
     model = model.to(device)
     best_val_loss = float('inf')
     epochs_no_improve = 0

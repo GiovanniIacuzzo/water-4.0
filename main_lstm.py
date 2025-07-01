@@ -24,11 +24,11 @@ if __name__ == "__main__":
 
     # Caricamento del dataset
     dataset = LTownLeakageDataset(
-        demand_files=["data/2018_SCADA_Demands.csv", "data/2019_SCADA_Demands.csv"],
-        flow_files=["data/2018_SCADA_Flows.csv", "data/2019_SCADA_Flows.csv"],
-        level_files=["data/2018_SCADA_Levels.csv", "data/2019_SCADA_Levels.csv"],
-        pressure_files=["data/2018_SCADA_Pressures.csv", "data/2019_SCADA_Pressures.csv"],
-        leakage_files=["data/2018_Leakages.csv", "data/2019_Leakages.csv"],
+        demand_files=["data/2018_SCADA_Demands.csv"],
+        flow_files=["data/2018_SCADA_Flows.csv"],
+        level_files=["data/2018_SCADA_Levels.csv"],
+        pressure_files=["data/2018_SCADA_Pressures.csv"],
+        leakage_files=["data/2018_Leakages.csv"],
         seq_len=288,
         task_type="regression"
     )
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     # Addestramento del modello
     train_model(model, train_loader, val_loader, n_epochs=50, experiment=experiment, patience=5, lr=lr)
-    model.load_state_dict(torch.load("best_model.pth"))
+    model.load_state_dict(torch.load("best_lstm_model.pth"))
 
     # Valutazione finale
     evaluate_model(model, test_loader, experiment, name_prefix="Test")
