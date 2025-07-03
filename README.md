@@ -27,6 +27,8 @@ L'approccio si articola in due fasi:
 - Lo scopo è **espandere artificialmente il dataset** con scenari realistici e stocastici.
 - Gli scenari prodotti hanno la forma `(N_scenari, forecast_horizon, n_features)` e sono salvati come input per la LSTM.
 
+![GAN-ARCHITETTURE](GAN_MODEL.png)
+
 ### Predizione con LSTM
 
 - Una rete **LSTM bidirezionale con meccanismo di attenzione** viene impiegata per mappare ciascuno scenario generato in una previsione puntuale di leakage.
@@ -44,6 +46,7 @@ L'approccio si articola in due fasi:
   - La LSTM valuta il rischio (leakage) associato a ciascuna possibilità.
 - **Flessibilità e scalabilità** verso scenari reali, anche in condizioni di scarsità di dati osservati.
 
+![GAN-LSTM-ARCHITETTURE](GAN-LSTM-CPSO.png)
 ---
 
 ## Modello Predittivo LSTM

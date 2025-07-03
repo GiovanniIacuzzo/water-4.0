@@ -29,7 +29,7 @@ class LSTMPredictor(nn.Module):
         batch_size, seq_len, hidden_dim = out.shape
 
         # Applica fc a ciascun timestep in modo indipendente
-        out = self.fc(out.view(-1, hidden_dim))  # (batch * seq_len, output_size)
+        out = self.fc(out.contiguous().view(-1, hidden_dim))  # (batch * seq_len, output_size)
         out = out.view(batch_size, seq_len, -1)  # (batch, seq_len, output_size)
 
         return out
