@@ -14,8 +14,11 @@ from models.lstm_model import LSTMPredictor
 from utils.train import train_model
 from utils.evaluate import evaluate_model
 from CPSO.ottimizzazione import optimize_with_cpso
+import multiprocessing as mp
 
 if __name__ == "__main__":
+    mp.set_start_method('spawn', force=True)
+
     experiment = Experiment(
         api_key="hH2SAakLm4RU5yJggbSxDAQ6v",
         project_name="WATER",
