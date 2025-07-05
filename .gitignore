@@ -5,10 +5,6 @@ best_generator.pth
 LSTM-CPSO-MODEL.drawio
 ISTeTLD/
 idee.txt
-generated_scenarios_example.png
-leakage_scenarios.png
-loss_D.png
-loss_G.png
 predicted_leakages.npy
 scenarios.npy
-val_mse_G.png
+temp.py

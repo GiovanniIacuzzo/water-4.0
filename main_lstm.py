@@ -102,8 +102,18 @@ if __name__ == "__main__":
         experiment=experiment
     )
 
+    print("Salvataggio del modello migliore")
     # Salvataggio del modello
-    torch.save(model.state_dict(), "best_lstm_model.pth")
+    torch.save({
+        "model_state_dict": model.state_dict(),
+        "model_config": model.config
+    }, "best_lstm_model.pth")
+
+    checkpoint = torch.load("best_lstm_model.pth", map_location=device)
+    model_config = checkpoint["model_config"]
+
+    model = LSTMPredictor(**model_config).to(device)
+    model.load_state_dict(checkpoint["model_state_dict"])
 
     # ====== Final evaluation ======
     evaluate_model(model, test_loader, experiment, name_prefix="Test")

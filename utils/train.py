@@ -145,8 +145,8 @@ def train_model(
 
         # Plot finale
         n_plot = min(300, len(val_targets))
-        val_preds_flat = val_preds.reshape(-1, val_preds.shape[-1])
-        val_targets_flat = val_targets.reshape(-1, val_targets.shape[-1])
+        val_preds_flat = val_preds_flat[:, 0]
+        val_targets_flat = val_targets_flat[:, 0]
 
         plt.figure(figsize=(12, 5))
         plt.plot(val_targets_flat[:n_plot], label='True', linewidth=2)

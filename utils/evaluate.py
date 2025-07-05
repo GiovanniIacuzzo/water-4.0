@@ -5,30 +5,23 @@ import torch
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 def plot_predictions_vs_truth(test_targets, test_preds, n_plot=300, title="Predictions vs Ground Truth", ylabel="Leakage", experiment=None):
-    # Reshape sicuro
     test_preds = np.squeeze(test_preds)
     test_targets = np.squeeze(test_targets)
 
-    # Assicura che siano 1D o 2D
-    if test_preds.ndim == 1:
-        test_preds = test_preds[:, np.newaxis]
-    if test_targets.ndim == 1:
-        test_targets = test_targets[:, np.newaxis]
+    if test_preds.ndim > 1 and test_preds.shape[-1] > 1:
+        test_preds = test_preds[:, 0]  # mostra solo la prima variabile
+        test_targets = test_targets[:, 0]
 
-    plt.figure(figsize=(12, 5))
+    plt.figure(figsize=(12, 5), constrained_layout=True)
     plt.plot(test_targets[:n_plot], label="True", linewidth=2)
     plt.plot(test_preds[:n_plot], label="Predicted", linestyle="--")
     plt.title(title)
     plt.xlabel("Sample")
     plt.ylabel(ylabel)
     plt.legend()
-    plt.tight_layout()
-
     if experiment:
         experiment.log_figure(figure_name=f"{title}_Figure", figure=plt)
-
-    plt.show()
-
+    plt.close()
 
 def plot_error_heatmap(test_targets, test_preds, title="Absolute Error Heatmap", experiment=None):
     # Reshape sicuro
