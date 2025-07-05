@@ -31,7 +31,7 @@ def optimize_with_cpso(train_loader, val_loader, input_size, output_size, experi
         train_loader, val_loader, input_size, output_size,
         dim=dim, lb=lb, ub=ub,
         num_islands=2,
-        migrations=1,  # futura estensione
+        migrations=1,
         migration_interval=0,
         options=options,
         device=device

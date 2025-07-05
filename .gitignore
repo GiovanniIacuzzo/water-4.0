@@ -8,3 +8,11 @@ idee.txt
 predicted_leakages.npy
 scenarios.npy
 temp.py
+main.aux
+main.bbl
+main.blg
+main.log
+main.fls
+main.fdb_latexmk
+main.synctex.gz
+main.pdf
