@@ -191,104 +191,31 @@ dove $N$ è il numero totale di esempi nella finestra mobile di addestramento.
 
 \subsection{Riflessioni sull’Architettura}
 
-L’impiego di una rete LSTM profonda consente di modellare sia le correlazioni a breve termine come le 
-fluttuazioni giornaliere di pressione o domanda sia quelle a lungo termine, come gli andamenti 
-settimanali o stagionali tipici dei sistemi idrici. Inoltre, la capacità della LSTM di controllare il 
-flusso di memoria la rende particolarmente adatta a situazioni in cui alcuni segnali si manifestano in 
-ritardo o con effetto cumulativo.
+L’impiego di una rete LSTM profonda permette di modellare efficacemente sia le correlazioni a breve termine, come le fluttuazioni giornaliere di pressione o domanda, sia quelle a lungo termine, quali gli andamenti settimanali o stagionali tipici dei sistemi idrici. Grazie alla capacità della LSTM di regolare il flusso di memoria, questo tipo di rete è particolarmente adatto a catturare segnali che si manifestano con ritardo o hanno un effetto cumulativo.
 
-Per migliorare le prestazioni predittive del modello LSTM, è stato integrato un meccanismo di 
-ottimizzazione automatica degli iperparametri basato su \textit{Continuous Particle Swarm Optimization} 
-(CPSO). Questo approccio consente di esplorare in modo efficiente lo spazio delle configurazioni 
-possibili, selezionando la combinazione che minimizza l'errore di previsione.
+Per migliorare ulteriormente le prestazioni predittive del modello, abbiamo integrato un meccanismo di ottimizzazione automatica degli iperparametri basato su \textit{Continuous Particle Swarm Optimization} (CPSO). Tale approccio consente un’esplorazione efficiente dello spazio delle possibili configurazioni, selezionando la combinazione che minimizza l’errore di previsione.
 
-\bigskip
-
-Le caratteristiche architetturali delle LSTM, le formulazioni matematiche e le strategie di apprendimento 
-adottate in questo lavoro seguono fedelmente quanto descritto nella letteratura di riferimento sul 
-tema~\cite{hochreiter1997long, graves2013speech, greff2017lstm}.
-
-
-\section{Ottimizzazione del Modello tramite CPSO}
-
-Il processo di integrazione tra il modello LSTM e l’ottimizzatore CPSO è illustrato nel diagramma di 
-flusso in Figura~\ref{fig:cpso_flowchart}. Il diagramma mostra il ciclo iterativo in cui il CPSO genera 
-nuove configurazioni, valuta le prestazioni del modello su un set di validazione, e aggiorna la 
-popolazione di particelle sulla base della funzione obiettivo.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{img/LSTM-CPSO-MODEL.png}
-    \caption{Diagramma di flusso del processo di ottimizzazione del modello LSTM mediante CPSO.}
-    \label{fig:cpso_flowchart}
-\end{figure}
-
-I parametri ottimizzati includono:
-\begin{itemize}
-    \item \textbf{Numero di layer} LSTM ($\in [1, 5]$)
-    \item \textbf{Dimensione dello stato nascosto} ($\in [16, 256]$)
-    \item \textbf{Tasso di dropout} ($\in [0.0, 0.6]$)
-    \item \textbf{Learning rate} ($\in [10^{-5}, 10^{-2}]$)
-\end{itemize}
-
-L’obiettivo della funzione di costo è la minimizzazione della perdita (MSE) sul dataset di validazione. 
-Durante l’ottimizzazione, il comportamento dell’algoritmo è stato tracciato tramite una curva di 
-convergenza, che mostra la riduzione progressiva dell’errore nel corso delle iterazioni. 
-La Figura~\ref{fig:cpso} riassume l’andamento della funzione obiettivo durante il processo evolutivo.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{img/CPSO Convergence Curve.png}
-    \caption{Curva di convergenza dell’ottimizzazione CPSO sul set di validazione.}
-    \label{fig:cpso}
-\end{figure}
-
+Le caratteristiche architetturali delle LSTM, insieme alle formulazioni matematiche e alle strategie di apprendimento adottate, sono state implementate seguendo fedelmente quanto riportato in letteratura~\cite{hochreiter1997long, graves2013speech, greff2017lstm}.
 
 \section{Introduzione e Definizione del Problema}
 
-L'ottimizzazione di modelli di deep learning per compiti di previsione time series costituisce un 
-problema chiave in molteplici ambiti applicativi, inclusi il monitoraggio ambientale, la manutenzione 
-predittiva e la gestione delle reti idriche. In particolare, la configurazione ottimale di reti neurali 
-ricorrenti (RNN), come le Long Short-Term Memory (LSTM), ha un impatto significativo sulla qualità delle 
-previsioni, ma rappresenta una sfida computazionale non banale a causa della natura altamente non 
-convessa dello spazio degli iperparametri \cite{bergstra2012random}.
+Negli ultimi anni, algoritmi di ottimizzazione ispirati all’intelligenza collettiva, come il \textit{Particle Swarm Optimization} (PSO), si sono affermati come strumenti efficaci per affrontare questi problemi~\cite{kennedy1995particle, eberhart2001pso}. Tuttavia, quando la funzione obiettivo richiede un costo computazionale elevato — come avviene nel caso dell’addestramento iterativo di un modello LSTM — il tempo di valutazione diventa un collo di bottiglia significativo.
 
-Negli ultimi anni, metodi di ottimizzazione numerica ispirati alla teoria dei sistemi complessi e 
-all'intelligenza collettiva, come il \textit{Particle Swarm Optimization} (PSO), si sono dimostrati 
-strumenti efficaci per affrontare tali problemi \cite{kennedy1995particle, eberhart2001pso}. Tuttavia, 
-quando la funzione obiettivo è costosa da valutare come nel caso dell'addestramento iterativo di un 
-modello LSTM il costo computazionale diventa un collo di bottiglia critico.
+Per superare questo limite, proponiamo un approccio distribuito che sfrutta una variante continua e parallela del PSO, denominata CPSO. L’obiettivo è sfruttare il parallelismo intrinseco dell’algoritmo swarm-based distribuendo il carico computazionale su più core CPU e introducendo un meccanismo di cooperazione asincrona tra sottopopolazioni evolutive, secondo il paradigma del \textit{modello a isole} (\textit{Island Model})~\cite{cantupaz1998survey, tomassini2005spatially}.
 
-In questo contesto, proponiamo un approccio distribuito per la ricerca ottimale degli iperparametri 
-basato su una variante continua e parallela del PSO. L'obiettivo è quello di sfruttare il parallelismo 
-intrinseco dell'algoritmo swarm-based, distribuendo il carico computazionale su più core della CPU e 
-introducendo un meccanismo di cooperazione asincrona tra sottopopolazioni evolutive, secondo il 
-paradigma del \textit{modello a isole} (\textit{Island Model}) \cite{cantupaz1998survey, tomassini2005spatially}.
+Il principio alla base consiste nel suddividere lo swarm in sottoinsiemi (le “isole”), ciascuno dei quali evolve in parallelo seguendo le regole standard del CPSO~\cite{professoressa}. A intervalli regolari, le isole si sincronizzano parzialmente condividendo le migliori soluzioni globali per guidare la ricerca collettiva, mantenendo però una diversità topologica che riduce il rischio di convergenza prematura, frequente in algoritmi swarm-based in spazi di alta dimensione~\cite{omran2005dynamic}.
 
-L'idea centrale è la seguente: suddividere lo swarm in sottoinsiemi (\textit{isole}), 
-ciascuno dei quali evolve in parallelo secondo le regole standard del CPSO \cite{professoressa}. 
-A intervalli regolari, le isole sincronizzano parzialmente le proprie informazioni globali migliori 
-(\textit{global best}) per orientare la ricerca collettiva, mantenendo al contempo una certa diversità 
-topologica. Tale approccio consente sia di accelerare l'ottimizzazione sia di ridurre il rischio di 
-convergenza prematura, tipico degli algoritmi swarm-based in spazi altamente dimensionali \cite{omran2005dynamic}.
+Nel caso studio, applichiamo questa strategia distribuita alla calibrazione automatica di un modello LSTM, definendo la funzione obiettivo come la perdita sul validation set ottenuta per una specifica configurazione degli iperparametri, quali numero di layer, dimensione dello stato nascosto, tasso di dropout e learning rate.
 
-Nel nostro caso studio, applichiamo questo schema di ottimizzazione distribuita alla calibrazione 
-automatica di un modello LSTM. La funzione obiettivo è definita come la perdita di validazione ottenuta 
-dal modello per una configurazione di iperparametri specifica, includendo il numero di layer, la 
-dimensione del layer nascosto, il tasso di dropout e il learning rate.
-
-Formalmente, il problema può essere espresso come segue:
+Formalmente, il problema di ottimizzazione si esprime come:
 
 \begin{equation}
-\min_{\theta \in \Theta} \mathcal{L}_{val}(\mathcal{M}(\theta; \mathcal{D}_{train}), \mathcal{D}_{val})
+\min_{\theta \in \Theta} \mathcal{L}{val}(\mathcal{M}(\theta; \mathcal{D}{train}), \mathcal{D}_{val})
 \end{equation}
 
-dove $\theta \in \Theta \subset \mathbb{R}^d$ è il vettore degli iperparametri del modello, $\mathcal{M}(\cdot)$ rappresenta il modello LSTM, $\mathcal{D}_{train}$ e $\mathcal{D}_{val}$ sono i dataset di addestramento e validazione rispettivamente, e $\mathcal{L}_{val}$ è la funzione di perdita calcolata sul validation set.
+dove $\theta \in \Theta \subset \mathbb{R}^d$ rappresenta il vettore degli iperparametri, $\mathcal{M}(\cdot)$ è il modello LSTM, $\mathcal{D}{train}$ e $\mathcal{D}{val}$ sono rispettivamente i dataset di addestramento e validazione, e $\mathcal{L}_{val}$ è la funzione di perdita calcolata sul validation set.
 
-Il presente lavoro si pone pertanto l'obiettivo di: (i) esplorare l’efficacia del modello CPSO 
-distribuito per l’ottimizzazione di modelli LSTM su dataset reali, e (ii) analizzare l’impatto della 
-parallelizzazione tramite modello a isole sul tempo di convergenza e sulla qualità della soluzione 
-ottenuta.
+L’obiettivo del presente lavoro è duplice: (i) valutare l’efficacia del CPSO distribuito nell’ottimizzazione degli iperparametri di modelli LSTM su dati reali e (ii) analizzare l’impatto della parallelizzazione tramite modello a isole sia sul tempo di convergenza sia sulla qualità della soluzione ottenuta.
 
 \section{Formulazione Matematica e Architettura \\Computazionale del Modello a Isole}
 
@@ -453,7 +380,7 @@ delle migliori particelle da $\mathcal{P}_k$ e sostituire le peggiori in $\mathc
 
 L'implementazione parallela è ottenibile con paradigmi a memoria condivisa, come 
 \texttt{multiprocessing} in Python o \texttt{OpenMP}/MPI in C++. Le strutture dati per la migrazione 
-possono usare code FIFO, semafori o oggetti condivisi (\texttt{Manager.Queue} in Python). 
+possono usare code FIFO, semafori o oggetti condivisi \\(\texttt{Manager.Queue} in Python). 
 La sincronizzazione può essere sincrona (bloccante) o asincrona, a seconda dell’efficienza desiderata e 
 del tipo di hardware.
 
@@ -464,6 +391,38 @@ mediante algoritmo CPSO, con l’obiettivo di valutarne la capacità predittiva 
 generale efficacia nel contesto del problema affrontato. Il modello è stato addestrato su una porzione 
 dei dati e successivamente testato su un insieme separato, rispettando una suddivisione temporale che 
 simula realisticamente un contesto di predizione futura.
+
+Il processo di integrazione tra modello LSTM e ottimizzatore CPSO è illustrato nel diagramma di flusso 
+in Figura~\ref{fig:cpso_flowchart}. Qui viene rappresentato il ciclo iterativo in cui il CPSO genera 
+nuove configurazioni, valuta le prestazioni del modello sul set di validazione e aggiorna la popolazione 
+di particelle in base alla funzione obiettivo.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{img/LSTM-CPSO-MODEL.png}
+\caption{Diagramma di flusso del processo di ottimizzazione del modello LSTM mediante CPSO.}
+\label{fig:cpso_flowchart}
+\end{figure}
+
+Gli iperparametri ottimizzati sono:
+\begin{itemize}
+\item \textbf{Numero di layer} LSTM ($\in [1, 5]$)
+\item \textbf{Dimensione dello stato nascosto} ($\in [16, 256]$)
+\item \textbf{Tasso di dropout} ($\in [0.0, 0.6]$)
+\item \textbf{Learning rate} ($\in [10^{-5}, 10^{-2}]$)
+\end{itemize}
+
+La funzione obiettivo mira a minimizzare la perdita (MSE) sul dataset di validazione. Durante 
+l’ottimizzazione, l’andamento dell’algoritmo è stato monitorato tramite la curva di convergenza 
+mostrata in Figura~\ref{fig:cpso}, che evidenzia la riduzione progressiva dell’errore lungo le 
+iterazioni.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{img/CPSO Convergence Curve.png}
+\caption{Curva di convergenza dell’ottimizzazione CPSO sul set di validazione.}
+\label{fig:cpso}
+\end{figure}
 
 Durante la fase di addestramento, è stata monitorata l’evoluzione della funzione di perdita, al fine di 
 verificare la corretta convergenza del modello e l’assenza di fenomeni di overfitting. 

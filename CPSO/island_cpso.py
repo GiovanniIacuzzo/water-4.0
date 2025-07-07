@@ -1,3 +1,5 @@
+# Modulo aggiornato: CPSO/island_cpso.py
+
 import torch
 import multiprocessing as mp
 import matplotlib.pyplot as plt
@@ -9,14 +11,13 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeEl
 
 console = Console()
 
-
 def island_cpso(train_loader, val_loader, input_size, output_size,
                 dim=4, lb=None, ub=None,
                 num_islands=4, migrations=3, migration_interval=5,
                 options=None, device="cpu"):
 
-    lb = lb or [1, 16, 1e-5, 0.0]
-    ub = ub or [5, 256, 1e-2, 0.6]
+    lb = np.array(lb or [1, 16, 1e-5, 0.0])
+    ub = np.array(ub or [5, 256, 1e-2, 0.6])
 
     manager = mp.Manager()
     return_dict = manager.dict()
@@ -35,14 +36,20 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
         for i in range(num_islands):
             console.print(f"[Setup] Inizializzo Isola {i}")
 
-            # Copia delle opzioni con override del numero di particelle
+            # Suddivisione dello spazio di ricerca
+            local_lb = lb + i * (ub - lb) / num_islands
+            local_ub = lb + (i + 1) * (ub - lb) / num_islands
+
+            # Opzioni locali con override del numero di particelle
             local_options = options.copy() if options else {}
             local_options['particles'] = particles_per_island
 
-            sub_interval = options.get('sub_interval', 5)  # prendi il sub_interval reale
+            sub_interval = options.get('sub_interval', 5)
             p = mp.Process(target=optimize_in_island,
-                        args=(i, return_dict, best_global, train_loader, val_loader,
-                                input_size, output_size, local_options, lb, ub, dim, device, sub_interval))
+                           args=(i, return_dict, best_global, train_loader, val_loader,
+                                 input_size, output_size, local_options,
+                                 local_lb.tolist(), local_ub.tolist(),
+                                 dim, device, sub_interval))
 
             processes.append(p)
             p.start()
@@ -57,6 +64,24 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
 
         console.print(f"[green][Migrazione {mig + 1}] Miglior costo globale: {best_global['cost']:.6f}")
 
+        # === Plot curve di convergenza per ogni isola ===
+    plt.figure(figsize=(10, 6))
+    for island_id, data in return_dict.items():
+        history = data["history"]
+        if isinstance(history, torch.Tensor):
+            history = history.cpu().numpy()
+        plt.plot(history, label=f"Isola {island_id}")
+
+    plt.title("Curve di Convergenza CPSO - Modello a Isole")
+    plt.xlabel("Iterazioni")
+    plt.ylabel("Costo minimo")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("convergenza_isole.png")
+    console.print("[bold green]✅ Curva di convergenza salvata in 'convergenza_isole.png'")
+
+    # === Estrai migliori iperparametri ===
     best_params = best_global['pos']
     num_layers = int(round(best_params[0]))
     hidden_size = int(round(best_params[1]))
