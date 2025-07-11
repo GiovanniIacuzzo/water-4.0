@@ -109,7 +109,7 @@ if __name__ == "__main__":
         "model_config": model.config
     }, "best_lstm_model.pth")
 
-    checkpoint = torch.load("best_lstm_model.pth", map_location=device)
+    checkpoint = torch.load("best_lstm_model.pth", map_location=device, weights_only=True)
     model_config = checkpoint["model_config"]
 
     model = LSTMPredictor(**model_config).to(device)

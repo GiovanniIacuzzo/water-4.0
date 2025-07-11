@@ -19,8 +19,13 @@ def plot_predictions_vs_truth(test_targets, test_preds, n_plot=300, title="Predi
     plt.xlabel("Sample")
     plt.ylabel(ylabel)
     plt.legend()
+    plt.savefig("Predictions vs Ground Truth.png")
     if experiment:
-        experiment.log_figure(figure_name=f"{title}_Figure", figure=plt)
+        try:
+            experiment.log_figure(figure_name=f"{title}_Figure", figure=plt)
+        except Exception as e:
+            print(f"[WARN] Comet logging failed for plot '{title}': {e}")
+
     plt.close()
 
 def plot_error_heatmap(test_targets, test_preds, title="Absolute Error Heatmap", experiment=None):
@@ -46,9 +51,13 @@ def plot_error_heatmap(test_targets, test_preds, title="Absolute Error Heatmap",
     plt.xlabel("Time Step")
     plt.ylabel("Output Dimension" if errors.shape[1] > 1 else "Leakage")
     plt.tight_layout()
-
+    plt.savefig("Absolute Error Heatmap.png")
     if experiment:
-        experiment.log_figure(figure_name=f"{title}_Figure", figure=plt)
+        try:
+            experiment.log_figure(figure_name=f"{title}_Figure", figure=plt)
+        except Exception as e:
+            print(f"[WARN] Comet logging failed for heatmap '{title}': {e}")
+
 
     plt.show()
 

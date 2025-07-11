@@ -1,15 +1,21 @@
-# Modulo aggiornato: CPSO/island_cpso.py
-
 import torch
 import multiprocessing as mp
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import time
+import threading
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 
 console = Console()
+
+def logger_worker(queue):
+    while True:
+        msg = queue.get()
+        if msg == "STOP":
+            break
+        console.log(msg)
 
 def island_cpso(train_loader, val_loader, input_size, output_size,
                 dim=4, lb=None, ub=None,
@@ -22,25 +28,28 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
     manager = mp.Manager()
     return_dict = manager.dict()
     best_global = manager.dict()
+    log_queue = manager.Queue()
+    migration_pool = manager.dict()
+    barrier = mp.Barrier(num_islands)
+
+    log_thread = threading.Thread(target=logger_worker, args=(log_queue,), daemon=True)
+    log_thread.start()
 
     console.rule("[bold cyan]AVVIO CPSO - MODELLO A ISOLE")
 
-    # Calcolo delle particelle per isola
     total_particles = options.get('particles', 4)
     particles_per_island = max(1, total_particles // num_islands)
 
     for mig in range(migrations):
-        console.print(f"[bold yellow]\n[Migrazione {mig + 1}/{migrations}] Round di ottimizzazione in corso...")
+        log_queue.put(f"[yellow]\n[Migrazione {mig + 1}/{migrations}] Round di ottimizzazione in corso...")
 
         processes = []
         for i in range(num_islands):
-            console.print(f"[Setup] Inizializzo Isola {i}")
+            log_queue.put(f"[Setup] Inizializzo Isola {i}")
 
-            # Suddivisione dello spazio di ricerca
             local_lb = lb + i * (ub - lb) / num_islands
             local_ub = lb + (i + 1) * (ub - lb) / num_islands
 
-            # Opzioni locali con override del numero di particelle
             local_options = options.copy() if options else {}
             local_options['particles'] = particles_per_island
 
@@ -49,25 +58,25 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
                            args=(i, return_dict, best_global, train_loader, val_loader,
                                  input_size, output_size, local_options,
                                  local_lb.tolist(), local_ub.tolist(),
-                                 dim, device, sub_interval))
-
+                                 dim, device, sub_interval, log_queue, barrier, migration_pool, num_islands))
             processes.append(p)
             p.start()
 
         for p in processes:
             p.join()
 
-        # Dopo ogni migrazione aggiorna il miglior global
         best_candidate = min(return_dict.values(), key=lambda x: x['best_cost'])
         best_global['pos'] = best_candidate['best_pos']
         best_global['cost'] = best_candidate['best_cost']
 
-        console.print(f"[green][Migrazione {mig + 1}] Miglior costo globale: {best_global['cost']:.6f}")
+        log_queue.put(f"[green][Migrazione {mig + 1}] Miglior costo globale: {best_global['cost']:.6f}")
 
-        # === Plot curve di convergenza per ogni isola ===
+    log_queue.put("STOP")
+    log_thread.join()
+
     plt.figure(figsize=(10, 6))
     for island_id, data in return_dict.items():
-        history = data["history"]
+        history = data.get("history", [])
         if isinstance(history, torch.Tensor):
             history = history.cpu().numpy()
         plt.plot(history, label=f"Isola {island_id}")
@@ -79,9 +88,8 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
     plt.grid(True)
     plt.tight_layout()
     plt.savefig("convergenza_isole.png")
-    console.print("[bold green]✅ Curva di convergenza salvata in 'convergenza_isole.png'")
+    console.print("[bold green] Curva di convergenza salvata in 'convergenza_isole.png'")
 
-    # === Estrai migliori iperparametri ===
     best_params = best_global['pos']
     num_layers = int(round(best_params[0]))
     hidden_size = int(round(best_params[1]))
@@ -90,44 +98,73 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
 
     return num_layers, hidden_size, lr, dropout
 
-
 def optimize_in_island(island_id, return_dict, best_global, train_loader, val_loader,
-                        input_size, output_size, options, lb, ub, dim, device, sub_interval):
+                        input_size, output_size, options, lb, ub, dim, device, sub_interval, log_queue, barrier, migration_pool, num_islands):
     from CPSO.CPSO import CPSO
     from CPSO.f_obj import objective_function
 
-    console = Console()
-    console.print(f"[blue][Isola {island_id}] Ottimizzazione per {sub_interval} iterazioni")
+    try:
+        log_queue.put(f"[blue][Isola {island_id}] Ottimizzazione per {sub_interval} iterazioni")
 
-    def wrapped_obj(x):
-        for i in range(len(x)):
-            console.print(f"[Isola {island_id}] Valuto particella {i+1}/{len(x)}")
-        return objective_function(x, train_loader, val_loader, input_size, output_size, device=device)
+        def wrapped_obj(x):
+            for i in range(len(x)):
+                log_queue.put(f"[Isola {island_id}] Valuto particella {i+1}/{len(x)}")
+            return objective_function(x, train_loader, val_loader, input_size, output_size, device=device)
 
-    local_options = options.copy() if options else {}
-    local_options['log_file'] = f'cpso_island_{island_id}.csv'
-    local_options['sub_interval'] = sub_interval
+        local_options = options.copy() if options else {}
+        local_options['log_file'] = f'cpso_island_{island_id}.csv'
+        local_options['sub_interval'] = sub_interval
 
-    optimizer = CPSO(
-        objective_fn=wrapped_obj,
-        dim=dim,
-        lb=lb,
-        ub=ub,
-        options=local_options,
-        device=device
-    )
+        optimizer = CPSO(
+            objective_fn=wrapped_obj,
+            dim=dim,
+            lb=lb,
+            ub=ub,
+            options=local_options,
+            device=device,
+            log_queue=log_queue,
+            island_id=island_id
+        )
 
-    # Se c'è un global best, usalo
-    if 'pos' in best_global:
-        console.print(f"[cyan][Isola {island_id}] Sincronizzo con best globale iniziale")
-        optimizer.global_best_position = torch.tensor(best_global['pos'], device=device)
-        optimizer.global_best_cost = float(best_global['cost'])
+        if 'pos' in best_global:
+            log_queue.put(f"[cyan][Isola {island_id}] Sincronizzo con best globale iniziale")
+            optimizer.global_best_position = torch.tensor(best_global['pos'], device=device)
+            optimizer.global_best_cost = float(best_global['cost'])
 
-    best_pos, best_cost, exec_time, history = optimizer.optimize()
-    console.print(f"[magenta][Isola {island_id}] Fine ottimizzazione - Best Cost: {best_cost:.4f}")
+        best_pos, best_cost, exec_time, history = optimizer.optimize()
 
-    return_dict[island_id] = {
-        'best_pos': best_pos,
-        'best_cost': best_cost,
-        'history': history
-    }
+        # Invio del miglior individuo al migration_pool
+        migration_pool[island_id] = {
+            'best_pos': best_pos.tolist(),
+            'best_cost': best_cost
+        }
+
+        log_queue.put(f"[Isola {island_id}] In attesa delle altre isole per la migrazione...")
+        barrier.wait()
+
+        # Ricezione dei migliori da altre isole
+        immigrants = [v for k, v in migration_pool.items() if k != island_id]
+        if immigrants:
+            best_immigrant = min(immigrants, key=lambda x: x['best_cost'])
+            immigrant_tensor = torch.tensor(best_immigrant['best_pos'], device=device)
+            log_queue.put(f"[Isola {island_id}] Migrazione: importato best da altra isola con costo {best_immigrant['best_cost']:.4f}")
+            optimizer.global_best_position = immigrant_tensor
+            optimizer.global_best_cost = best_immigrant['best_cost']
+
+        log_queue.put(f"[Isola {island_id}] Migrazione sincronizzata completata.")
+
+        return_dict[island_id] = {
+            'best_pos': best_pos,
+            'best_cost': best_cost,
+            'history': history
+        }
+
+        log_queue.put(f"[magenta][Isola {island_id}] Fine ottimizzazione - Best Cost: {best_cost:.4f}")
+
+    except Exception as e:
+        log_queue.put(f"[red][Errore][Isola {island_id}] {str(e)}")
+        return_dict[island_id] = {
+            'best_pos': None,
+            'best_cost': float('inf'),
+            'history': []
+        }

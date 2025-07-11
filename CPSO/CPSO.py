@@ -14,7 +14,9 @@ class CPSO:
                  lb: Union[float, list],
                  ub: Union[float, list],
                  options: dict = None,
-                 device: str = 'mps'):
+                 device: str = 'mps',
+                 log_queue=None,
+                 island_id=None):
 
         default_options = {
             'particles': 100,
@@ -52,6 +54,9 @@ class CPSO:
         self.print_every = options['print_every']
         self.log_file = options['log_file']
 
+        self.log_queue = log_queue
+        self.island_id = island_id
+
         self.interval = self.sub_interval * self.dt
 
         self.VarMin = torch.full((dim,), lb, device=device) if isinstance(lb, (float, int)) else torch.tensor(lb, device=device)
@@ -75,17 +80,24 @@ class CPSO:
             writer = csv.writer(f)
             writer.writerow(['iteration', 'best_cost'])
 
+    def _log(self, msg):
+        prefix = f"[Isola {self.island_id}] " if self.island_id is not None else ""
+        if self.log_queue:
+            self.log_queue.put(f"{prefix}{msg}")
+        else:
+            print(f"{prefix}{msg}")
+
     def optimize(self):
         self.noChangeCount = 0
         self.restored_iteration = 0
         start_time = time.time()
         if os.path.exists("cpso_checkpoint.pt"):
-            print("Checkpoint trovato. Provo a ripristinare lo stato...")
+            self._log("Checkpoint trovato. Provo a ripristinare lo stato...")
             try:
                 self.load_checkpoint("cpso_checkpoint.pt")
             except Exception as e:
-                print(f"Errore durante il ripristino del checkpoint: {e}")
-                print("Il file è probabilmente corrotto. Lo elimino e riparto da zero.")
+                self._log(f"Errore durante il ripristino del checkpoint: {e}")
+                self._log("Il file è probabilmente corrotto. Lo elimino e riparto da zero.")
                 os.remove("cpso_checkpoint.pt")
 
         for it in trange(self.restored_iteration, self.sub_interval, desc="CPSO Optimization"):
@@ -124,13 +136,8 @@ class CPSO:
             new_velocities = torch.clamp(new_velocities, 0.1 * self.VarMin, 0.1 * self.VarMax)
 
             self.positions = new_positions
-            # print("Posizioni:", self.positions)
-            
             self.velocities = new_velocities
-            # print("Velocità:", self.velocities)
-
             self.costs = self.objective_fn(self.positions)
-            # print("Costi:", self.costs)
 
             improved = self.costs < self.best_costs
             self.best_positions[improved] = self.positions[improved]
@@ -151,12 +158,12 @@ class CPSO:
                 writer.writerow([it + 1, self.global_best_cost])
 
             if (self.print_every and (it + 1) % self.print_every == 0) or it == 0:
-                print(f"[Iter {it + 1:03d}] Best Cost: {self.global_best_cost:.6f}")
+                self._log(f"[Iter {it + 1:03d}] Best Cost: {self.global_best_cost:.6f}")
 
             self.save_checkpoint("cpso_checkpoint.pt", iteration=it + 1)
 
             if self.noChangeCount >= self.maxNoChange:
-                print("Early stopping...")
+                self._log("Early stopping...")
                 break
 
         exec_time = time.time() - start_time
@@ -170,7 +177,6 @@ class CPSO:
             exec_time,
             torch.tensor(self.BestCost).cpu().numpy()
         )
-
 
     def plot(self):
         plt.figure(figsize=(8, 5))
@@ -193,7 +199,6 @@ class CPSO:
             if verbose:
                 print(f"\n=== Run {run + 1}/{runs} ===")
 
-            # Re-inizializza lo swarm per ogni run
             self.__init__(
                 objective_fn=self.objective_fn,
                 dim=self.dim,
@@ -247,7 +252,7 @@ class CPSO:
         torch.save(checkpoint, path)
 
     def load_checkpoint(self, path="cpso_checkpoint.pt"):
-        checkpoint = torch.load(path, map_location=self.device)
+        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
         self.positions = checkpoint['positions']
         self.velocities = checkpoint['velocities']
         self.costs = checkpoint['costs']
@@ -259,4 +264,3 @@ class CPSO:
         self.restored_iteration = checkpoint['iteration']
         self.start_time = checkpoint.get('start_time', time.time())
         self.noChangeCount = checkpoint.get('noChangeCount', 0)
-
