@@ -16,7 +16,7 @@ def optimize_with_cpso(train_loader, val_loader, input_size, output_size, experi
 
     options = {
         'particles': 6,
-        'sub_interval': 10,
+        'sub_interval': 4,
         'mu_max': 0.9,
         'mu_min': 0.4,
         'dt': 1,

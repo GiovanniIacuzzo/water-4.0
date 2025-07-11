@@ -2,11 +2,8 @@ import torch
 import multiprocessing as mp
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
-import time
 import threading
 from rich.console import Console
-from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 
 console = Console()
 
@@ -65,7 +62,11 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
         for p in processes:
             p.join()
 
-        best_candidate = min(return_dict.values(), key=lambda x: x['best_cost'])
+        valid_candidates = [v for v in return_dict.values() if v['best_cost'] != float('inf')]
+        if not valid_candidates:
+            raise RuntimeError("Nessuna isola ha restituito un risultato valido.")
+
+        best_candidate = min(valid_candidates, key=lambda x: x['best_cost'])
         best_global['pos'] = best_candidate['best_pos']
         best_global['cost'] = best_candidate['best_cost']
 
@@ -74,12 +75,21 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
     log_queue.put("STOP")
     log_thread.join()
 
+    # === GRAFICO MIGLIORATO ===
     plt.figure(figsize=(10, 6))
-    for island_id, data in return_dict.items():
+    for island_id in sorted(return_dict.keys()):
+        data = return_dict[island_id]
         history = data.get("history", [])
+
         if isinstance(history, torch.Tensor):
             history = history.cpu().numpy()
-        plt.plot(history, label=f"Isola {island_id}")
+        elif not isinstance(history, (list, np.ndarray)):
+            history = []
+
+        if len(history) > 0:
+            plt.plot(history, label=f"Isola {island_id}", marker='o')
+        else:
+            log_queue.put(f"[yellow][Avviso] Isola {island_id} ha history vuota: curva non tracciata.")
 
     plt.title("Curve di Convergenza CPSO - Modello a Isole")
     plt.xlabel("Iterazioni")
@@ -133,7 +143,6 @@ def optimize_in_island(island_id, return_dict, best_global, train_loader, val_lo
 
         best_pos, best_cost, exec_time, history = optimizer.optimize()
 
-        # Invio del miglior individuo al migration_pool
         migration_pool[island_id] = {
             'best_pos': best_pos.tolist(),
             'best_cost': best_cost
@@ -142,7 +151,6 @@ def optimize_in_island(island_id, return_dict, best_global, train_loader, val_lo
         log_queue.put(f"[Isola {island_id}] In attesa delle altre isole per la migrazione...")
         barrier.wait()
 
-        # Ricezione dei migliori da altre isole
         immigrants = [v for k, v in migration_pool.items() if k != island_id]
         if immigrants:
             best_immigrant = min(immigrants, key=lambda x: x['best_cost'])
