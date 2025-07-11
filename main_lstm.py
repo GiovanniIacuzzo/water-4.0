@@ -118,3 +118,12 @@ if __name__ == "__main__":
     # ====== Final evaluation ======
     evaluate_model(model, test_loader, experiment, name_prefix="Test")
     experiment.end()
+
+""" 
+Errore da evitare:
+[Errore][Isola 2] MPS backend out of memory (MPS allocated: 3.11 GB, other allocations: 5.42 GB, max     island_cpso.py:15
+        allowed: 9.07 GB). Tried to allocate 720.00 MB on private pool. Use PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0                  
+        to disable upper limit for memory allocations (may cause system failure).  
+Per risolvere:
+forza il garbage collector e svuota la cache MPS.
+    """
