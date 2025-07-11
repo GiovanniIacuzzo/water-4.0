@@ -15,7 +15,7 @@ def optimize_with_cpso(train_loader, val_loader, input_size, output_size, experi
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
     options = {
-        'particles': 6,
+        'particles': 4,
         'sub_interval': 4,
         'mu_max': 0.9,
         'mu_min': 0.4,
@@ -30,7 +30,7 @@ def optimize_with_cpso(train_loader, val_loader, input_size, output_size, experi
     return island_cpso(
         train_loader, val_loader, input_size, output_size,
         dim=dim, lb=lb, ub=ub,
-        num_islands=3,
+        num_islands=2,
         migrations=2,
         migration_interval=0,
         options=options,

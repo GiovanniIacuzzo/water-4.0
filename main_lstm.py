@@ -126,4 +126,5 @@ Errore da evitare:
         to disable upper limit for memory allocations (may cause system failure).  
 Per risolvere:
 forza il garbage collector e svuota la cache MPS.
+ridurre la batch size o il numero di particelle.
     """
