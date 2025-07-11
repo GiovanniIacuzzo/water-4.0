@@ -3,6 +3,7 @@ import multiprocessing as mp
 import matplotlib.pyplot as plt
 import numpy as np
 import threading
+import gc
 from rich.console import Console
 
 console = Console()
@@ -61,6 +62,10 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
 
         for p in processes:
             p.join()
+        
+        gc.collect()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
 
         valid_candidates = [v for v in return_dict.values() if v['best_cost'] != float('inf')]
         if not valid_candidates:
