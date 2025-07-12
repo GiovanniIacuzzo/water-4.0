@@ -29,6 +29,8 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
     log_queue = manager.Queue()
     migration_pool = manager.dict()
     barrier = mp.Barrier(num_islands)
+    global_costs_per_mig = []
+
 
     log_thread = threading.Thread(target=logger_worker, args=(log_queue,), daemon=True)
     log_thread.start()
@@ -74,13 +76,14 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
         best_candidate = min(valid_candidates, key=lambda x: x['best_cost'])
         best_global['pos'] = best_candidate['best_pos']
         best_global['cost'] = best_candidate['best_cost']
+        global_costs_per_mig.append(best_candidate['best_cost'])
 
         log_queue.put(f"[green][Migrazione {mig + 1}] Miglior costo globale: {best_global['cost']:.6f}")
 
-    log_queue.put("STOP")
-    log_thread.join()
+        log_queue.put("STOP")
+        log_thread.join()
 
-    # === GRAFICO MIGLIORATO ===
+    # === GRAFICO 1: Curve di Convergenza per Isola ===
     plt.figure(figsize=(10, 6))
     for island_id in sorted(return_dict.keys()):
         data = return_dict[island_id]
@@ -104,6 +107,32 @@ def island_cpso(train_loader, val_loader, input_size, output_size,
     plt.tight_layout()
     plt.savefig("convergenza_isole.png")
     console.print("[bold green] Curva di convergenza salvata in 'convergenza_isole.png'")
+
+    # === GRAFICO 2: Evoluzione del Miglior Costo Globale ===
+    if global_costs_per_mig:
+        plt.figure(figsize=(8, 4))
+        plt.plot(range(1, len(global_costs_per_mig)+1), global_costs_per_mig, marker='o', linestyle='-', color='darkblue')
+        plt.title("Evoluzione del Costo Globale durante le Migrazioni")
+        plt.xlabel("Migrazione")
+        plt.ylabel("Miglior Costo Globale")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig("global_best_cost_per_migration.png")
+        console.print("[bold green] Costo globale per migrazione salvato in 'global_best_cost_per_migration.png'")
+
+    # === GRAFICO 3: Istogramma Costi Finali per Isola ===
+    final_costs = {i: return_dict[i]['best_cost'] for i in sorted(return_dict.keys()) if return_dict[i]['best_cost'] != float('inf')}
+    if final_costs:
+        plt.figure(figsize=(8, 4))
+        plt.bar(final_costs.keys(), final_costs.values(), color='skyblue')
+        plt.title("Distribuzione dei Costi Finali per Isola")
+        plt.xlabel("ID Isola")
+        plt.ylabel("Costo Finale")
+        plt.xticks(list(final_costs.keys()))
+        plt.grid(True, axis='y')
+        plt.tight_layout()
+        plt.savefig("final_costs_per_island.png")
+        console.print("[bold green] Istogramma costi finali salvato in 'final_costs_per_island.png'")
 
     best_params = best_global['pos']
     num_layers = int(round(best_params[0]))

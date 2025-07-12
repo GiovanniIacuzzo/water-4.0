@@ -404,30 +404,59 @@ di particelle in base alla funzione obiettivo.
 \label{fig:cpso_flowchart}
 \end{figure}
 
-Gli iperparametri ottimizzati sono:
+Gli iperparametri ottimizzati dal CPSO includono:
 \begin{itemize}
-\item \textbf{Numero di layer} LSTM ($\in [1, 5]$)
-\item \textbf{Dimensione dello stato nascosto} ($\in [16, 256]$)
-\item \textbf{Tasso di dropout} ($\in [0.0, 0.6]$)
-\item \textbf{Learning rate} ($\in [10^{-5}, 10^{-2}]$)
+    \item \textbf{Numero di layer} LSTM ($\in [1, 5]$)
+    \item \textbf{Dimensione dello stato nascosto} ($\in [16, 256]$)
+    \item \textbf{Tasso di dropout} ($\in [0.0, 0.6]$)
+    \item \textbf{Learning rate} ($\in [10^{-5}, 10^{-2}]$)
 \end{itemize}
 
-La funzione obiettivo mira a minimizzare la perdita (MSE) sul dataset di validazione. Durante 
-l’ottimizzazione, l’andamento dell’algoritmo è stato monitorato tramite la curva di convergenza 
-mostrata in Figura~\ref{fig:cpso}, che evidenzia la riduzione progressiva dell’errore lungo le 
-iterazioni.
+La funzione obiettivo utilizzata per guidare l’ottimizzazione è la minimizzazione della loss di validazione 
+(MSE), calcolata su un set separato rispetto a quello di training.
+
+\subsection*{Analisi della convergenza e collaborazione tra isole}
+
+La Figura~\ref{fig:convergenza_isole} mostra l'andamento delle curve di convergenza per ciascuna isola. 
+Si osserva una progressiva riduzione della loss, con ogni isola che parte da condizioni iniziali differenti 
+ma tende a convergere verso un minimo comune. Ciò è reso possibile dalla strategia di migrazione, che 
+permette lo scambio delle migliori soluzioni tra le popolazioni.
 
 \begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{img/CPSO Convergence Curve.png}
-\caption{Curva di convergenza dell’ottimizzazione CPSO sul set di validazione.}
-\label{fig:cpso}
+    \centering
+    \includegraphics[width=0.9\textwidth]{img/CPSO Convergence Curves - Island Mode.png}
+    \caption{Curve di convergenza delle singole isole durante l’ottimizzazione CPSO.}
+    \label{fig:convergenza_isole}
 \end{figure}
 
-Durante la fase di addestramento, è stata monitorata l’evoluzione della funzione di perdita, al fine di 
-verificare la corretta convergenza del modello e l’assenza di fenomeni di overfitting. 
-La Figura~\ref{fig:train_loss} mostra l’andamento della \textit{train loss} nel corso delle epoche, 
-evidenziando una progressiva riduzione dell’errore e la stabilizzazione della curva.
+La Figura~\ref{fig:global_cost} rappresenta invece l’evoluzione del miglior costo globale dopo ogni migrazione. 
+Questo grafico fornisce una visione complessiva della capacità dell’algoritmo di migliorare iterativamente la 
+soluzione globale grazie alla cooperazione tra isole.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{img/global_best_cost_per_migration.png}
+    \caption{Andamento del miglior costo globale al termine di ciascuna migrazione.}
+    \label{fig:global_cost}
+\end{figure}
+
+Infine, la Figura~\ref{fig:final_costs_hist} mostra la distribuzione dei costi finali ottenuti da ogni isola al 
+termine dell’ultima migrazione. Questo istogramma è utile per valutare se le isole convergono in modo coerente o 
+se esistono isole che faticano a seguire il progresso globale. Una distribuzione compatta, come quella osservata, 
+è indicativa di una buona sincronizzazione e collaborazione.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{img/final_costs_per_island.png}
+    \caption{Distribuzione dei costi finali raggiunti da ciascuna isola.}
+    \label{fig:final_costs_hist}
+\end{figure}
+
+\subsection*{Addestramento e valutazione del modello ottimizzato}
+
+L'addestramento del modello LSTM con i migliori iperparametri trovati è stato monitorato mediante la train loss, 
+come mostrato in Figura~\ref{fig:train_loss}. 
+La curva evidenzia una discesa regolare e priva di overfitting, a conferma della buona generalizzazione.
 
 \begin{figure}[H]
     \centering
@@ -436,18 +465,15 @@ evidenziando una progressiva riduzione dell’errore e la stabilizzazione della 
     \label{fig:train_loss}
 \end{figure}
 
-Per valutare le prestazioni del modello sulla fase di test, sono state utilizzate metriche quantitative 
-comunemente adottate nel campo del machine learning regressivo:
+Le prestazioni finali del modello sono state valutate mediante metriche standard di regressione:
 
 \vspace{0.5em}
 \begin{itemize}
-    \item \textbf{MAE} (Mean Absolute Error), che misura l’errore medio assoluto tra le predizioni e i valori reali;
-    \item \textbf{RMSE} (Root Mean Square Error), che penalizza maggiormente gli errori più ampi e fornisce una stima più conservativa della bontà del modello;
-    \item \boldmath$\mathbf{R^2}$\unboldmath{}, ovvero il coefficiente di determinazione, che rappresenta la frazione di varianza spiegata dal modello rispetto a quella osservata.
+    \item \textbf{MAE} (Mean Absolute Error)
+    \item \textbf{RMSE} (Root Mean Square Error)
+    \item \textbf{$R^2$} (coefficiente di determinazione)
 \end{itemize}
 \vspace{0.5em}
-
-I risultati quantitativi ottenuti dal modello LSTM-CPSO sono riassunti nella Tabella~\ref{tab:Result_LSTM_CPSO}. Come si può notare, le metriche suggeriscono un’ottima capacità di generalizzazione, con un errore contenuto e un valore di $R^2$ prossimo all’unità, a indicare una spiegazione quasi completa della varianza nei dati di test.
 
 \begin{table}[H]
     \centering
@@ -463,11 +489,9 @@ I risultati quantitativi ottenuti dal modello LSTM-CPSO sono riassunti nella Tab
     \label{tab:Result_LSTM_CPSO}
 \end{table}
 
-Per completare l’analisi, si riporta anche una rappresentazione grafica del confronto tra i valori 
-reali e quelli predetti dal modello sulla porzione di test. Come evidenziato in Figura~\ref{fig:test_predict}, 
-il tracciato prodotto dal modello segue con alta fedeltà l’andamento reale della serie temporale, 
-dimostrando la capacità della rete LSTM di catturare le dinamiche temporali anche su dati non osservati 
-durante l’addestramento.
+Infine, la Figura~\ref{fig:test_predict} mostra il confronto tra i valori predetti e quelli reali 
+sul set di test. L’elevata corrispondenza tra le due curve testimonia la capacità del modello di 
+generalizzare su sequenze temporali complesse.
 
 \begin{figure}[H]
     \centering
@@ -476,21 +500,21 @@ durante l’addestramento.
     \label{fig:test_predict}
 \end{figure}
 
-Dalla Figura~\ref{fig:test_predict}, si osserva una forte aderenza tra le due curve, segno che il 
-modello è stato in grado di apprendere efficacemente le dinamiche sottostanti ai dati. Le oscillazioni, 
-le variazioni locali e le tendenze globali risultano ben riprodotte, indicando una buona capacità di 
-generalizzazione su dati non visti.
-
-In particolare, si nota che il modello riesce a seguire anche le transizioni più rapide senza evidenti 
-ritardi di risposta o smorzamenti, sintomo di una memoria temporale ben calibrata. L’assenza di errori 
-sistematici o di deviazioni persistenti suggerisce che il modello non soffre di overfitting e ha saputo 
-cogliere le relazioni temporali in modo robusto.
-
-Tale comportamento conferma le elevate prestazioni quantitative osservate in precedenza 
-(Tabella~\ref{tab:Result_LSTM_CPSO}), e rafforza la validità dell’approccio LSTM-CPSO per problemi di 
-previsione su sequenze temporali complesse.
-
 \section{Considerazioni Finali}
+
+Nel complesso, i risultati ottenuti confermano l’efficacia dell’approccio CPSO a isole parallele nel fornire una 
+strategia di ottimizzazione robusta ed efficiente per modelli di deep learning. L’integrazione tra ricerca continua, 
+diversificazione delle soluzioni e sincronizzazione delle informazioni si è rivelata determinante nel raggiungimento 
+di ottimi risultati predittivi.
+
+In particolare, l’analisi grafica fornisce un importante supporto alla spiegabilità del processo di ottimizzazione: 
+\begin{itemize}
+    \item le curve di convergenza evidenziano l’evoluzione delle popolazioni locali;
+    \item l’andamento del costo globale mostra l’impatto cumulativo della cooperazione tra isole;
+    \item l’istogramma finale verifica la coerenza tra le soluzioni emerse.
+\end{itemize}
+Tali rappresentazioni facilitano l’interpretazione dei risultati anche in contesti applicativi critici, 
+contribuendo alla trasparenza del modello.
 
 L’integrazione tra un modello LSTM e un ottimizzatore CPSO si è dimostrata efficace nel catturare le 
 dinamiche idriche complesse della rete simulata. L’approccio proposto consente di trasformare misure 
