@@ -11,7 +11,7 @@
 
 \title{Progetto WATER 4.0}
 \author{Giovanni Giuseppe Iacuzzo}
-\date{05-07-2025}
+\date{13-07-2025}
 
 \begin{document}
 \sloppy
@@ -261,23 +261,23 @@ con una cooperazione adattiva tra i processi \cite{tomassini2005spatially, cantu
 
 Il modello si fonda su una suddivisione della popolazione globale $\mathcal{P}$ in $K$ sottopopolazioni 
 disgiunte (isole), come proposto in \cite{alba2002parallelism, tomassini2005spatially}:
-\[
+\begin{equation}
 \mathcal{P} = \bigcup_{k=1}^K \mathcal{P}_k \quad \text{con} \quad \mathcal{P}_i \cap \mathcal{P}_j = \emptyset \quad \forall i \neq j
-\]
+\end{equation}
 dove $\mathcal{P}_k = \{x_1^{(k)}, x_2^{(k)}, \dots, x_{n_k}^{(k)}\}$ rappresenta la popolazione dell'isola $k$ con $n_k$ individui/particelle.
 
 Ogni individuo $x_i^{(k)} \in \mathbb{R}^d$ rappresenta una possibile soluzione nel dominio degli 
 iperparametri $\Theta \subseteq \mathbb{R}^d$, e viene valutato da una funzione obiettivo locale, 
 coerente con l'approccio seguito nei modelli di ottimizzazione distribuita di iperparametri \cite{li2019openbox}:
-\[
+\begin{equation}
 f^{(k)} : \Theta \to \mathbb{R}, \quad f^{(k)}(x) = \mathcal{L}_{val}(\mathcal{M}(x; \mathcal{D}_{train}^{(k)}), \mathcal{D}_{val}^{(k)})
-\]
+\end{equation}
 
 La dinamica evolutiva in ciascuna isola segue un algoritmo base $A$, che viene applicato localmente 
 secondo una funzione di aggiornamento $\phi_A$, come descritto in \cite{kennedy1995particle, engelbrecht2007computational}:
-\[
+\begin{equation}
 \mathcal{P}_k^{(t+1)} = \phi_A(\mathcal{P}_k^{(t)})
-\]
+\end{equation}
 
 \subsection{Migrazione e Topologia}
 
@@ -287,9 +287,11 @@ Le connessioni tra isole possono essere descritte da un grafo diretto $G = (V, E
 topologia predefinita (completa, anello, bidirezionale, ecc.), secondo le analisi in \cite{cantupaz1998survey}.
 
 La funzione di migrazione $\mu$ agisce come segue:
-\[
+
+\begin{equation}
 \mu: \mathcal{P}_i \times \mathcal{P}_j \rightarrow \mathcal{P}_j, \quad \mu(S_i, \mathcal{P}_j) = \mathcal{P}_j'
-\]
+\end{equation}
+
 dove $S_i \subseteq \mathcal{P}_i$ è un sottoinsieme degli individui migliori (secondo $f^{(i)}$), e i loro 
 corrispettivi rimpiazzano i peggiori individui in $\mathcal{P}_j$ come discusso in \cite{alba2002parallelism}.
 
@@ -306,15 +308,15 @@ Il processo iterativo globale può quindi essere riassunto come:
 L'analisi computazionale del modello a isole mostra un'efficienza elevata grazie alla decomposizione 
 naturale del problema in sottoprocessi paralleli \cite{alba2005parallel}. Sia $C_{eval}$ il costo medio 
 di valutazione della funzione obiettivo. In un sistema seriale il costo totale è:
-\[
+\begin{equation}
 \mathcal{C}_{serial} = \mathcal{O}(N \cdot T \cdot C_{eval})
-\]
+\end{equation}
 
 Nel contesto distribuito con $K$ isole di dimensioni simili ($n_k \approx N/K$), e con una migrazione 
 sincronizzata ogni $T_m$ iterazioni, il costo teorico diventa:
-\[
+\begin{equation}
 \mathcal{C}_{parallel} = \mathcal{O}\left(\frac{N \cdot T \cdot C_{eval}}{K} + \frac{T}{T_m} \cdot C_{migrazione}\right)
-\]
+\end{equation}
 
 dove $C_{migrazione}$ è legato al costo della comunicazione e sincronizzazione, che può essere ridotto 
 sfruttando modelli asincroni o a bassa frequenza di migrazione, come suggerito in \cite{cantupaz1998survey}.
