@@ -110,6 +110,7 @@ WATER-4.0/
 ├── CPSO/                    # Cartella Ottimizzazione
 │ ├── CPSO.py                # Algoritmo di ottimizzazione CPSO
 │ ├── f_obj.py               # Funzione obiettivo + Train
+│ ├── island_cpso.py         # Ottimizzazione con modello a isole
 │ └── ottimizzazione.py      # File che esegue l'ottimizzazione
 │
 ├── data/                    # Cartella dei dati
@@ -136,9 +137,9 @@ WATER-4.0/
 ├── main_gan.py              # Script principale per esecuzione della GAN
 ├── run_lstm_on_scenarios.py # Script principale per esecuzione della GAN
 │
-├── .gitignore
+├── .gitignore               # File Gitignore
 │
-└── README.md
+└── README.md                # File README 
 ```
 
 ![LSTM-CPSO_flowchart](LSTM-CPSO-MODEL.png)
