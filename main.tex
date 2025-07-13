@@ -7,18 +7,23 @@
 \usepackage{amsfonts}
 \usepackage[utf8]{inputenc}
 \usepackage{algorithm2e}
+\usepackage{microtype}
 
 \title{Progetto WATER 4.0}
 \author{Giovanni Giuseppe Iacuzzo}
 \date{05-07-2025}
 
 \begin{document}
-
+\sloppy
 \maketitle
 
 \section{Dataset Utilizzato}
 
-Il presente studio si avvale del dataset rilasciato nell'ambito della competizione internazionale BattLeDIM 2020 (Battle of the Leakage Detection and Isolation Methods) ~\cite{battle2020}, finalizzata allo sviluppo di metodologie avanzate per la rilevazione e la localizzazione di perdite nei sistemi di distribuzione idrica. I dati utilizzati derivano da simulazioni sul modello \emph{L-Town}, una rete idrica virtuale dettagliata, ispirata a condizioni operative realistiche.
+Il presente studio si avvale del dataset rilasciato nell'ambito della competizione internazionale 
+BattLeDIM 2020 (Battle of the Leakage Detection and Isolation Methods) ~\cite{battle2020}, finalizzata allo 
+sviluppo di metodologie avanzate per la rilevazione e la localizzazione di perdite nei sistemi di distribuzione 
+idrica. I dati utilizzati derivano da simulazioni sul modello \emph{L-Town}, una rete idrica virtuale dettagliata, 
+ispirata a condizioni operative realistiche.
 
 \begin{figure}[htbp]
     \centering
@@ -38,7 +43,7 @@ di variabili:
     \item \textbf{Perdite (Leakages)}: tassi di perdita (in m$^3$/h) simulati su specifici collegamenti, utilizzati come variabile target.
 \end{itemize}
 
-Tutte le serie temporali sono fornite in formato \texttt{CSV}, allineate temporalmente 
+Tutte le serie temporali sono fornite in formato \texttt{CSV}, allineate temporalmente
 tramite timestamp. I dati sono stati integrati e preprocessati per formare una matrice 
 temporale multivariata coerente, normalizzata tramite \texttt{StandardScaler}, e segmentata 
 in finestre mobili di lunghezza fissa (\texttt{seq\_len}). A ciascuna finestra di input è 
@@ -174,8 +179,8 @@ perdita idrica al tempo $T+1$.
 L’architettura del modello è strutturata come segue:
 
 \begin{itemize}
-    \item \textbf{Primo strato LSTM}: elabora la sequenza temporale in input producendo rappresentazioni latenti; il numero di unità è un iperparametro ottimizzato.
-    \item \textbf{Secondo strato LSTM}: riceve l'output del primo strato, sintetizzando ulteriormente le informazioni nel tempo. \\È configurato con \verb|return_sequences=False|.
+    \item \textbf{Primo strato LSTM}: elabora la sequenza temporale in input producendo rappresentazioni latenti. Il numero di unità è un iperparametro ottimizzato.
+    \item \textbf{Secondo strato LSTM}: riceve l'output del primo strato, sintetizzando ulteriormente le informazioni nel tempo. È configurato con \verb|return_sequences=False|.
     \item \textbf{Dropout}: applicato per la regolarizzazione, con tasso anch'esso ottimizzato.
     \item \textbf{Strato denso finale}: un neurone completamente connesso con attivazione lineare che restituisce il valore continuo della perdita.
 \end{itemize}
@@ -191,21 +196,43 @@ dove $N$ è il numero totale di esempi nella finestra mobile di addestramento.
 
 \subsection{Riflessioni sull’Architettura}
 
-L’impiego di una rete LSTM profonda permette di modellare efficacemente sia le correlazioni a breve termine, come le fluttuazioni giornaliere di pressione o domanda, sia quelle a lungo termine, quali gli andamenti settimanali o stagionali tipici dei sistemi idrici. Grazie alla capacità della LSTM di regolare il flusso di memoria, questo tipo di rete è particolarmente adatto a catturare segnali che si manifestano con ritardo o hanno un effetto cumulativo.
+L’impiego di una rete LSTM profonda permette di modellare efficacemente sia le correlazioni a breve termine, 
+come le fluttuazioni giornaliere di pressione o domanda, sia quelle a lungo termine, quali gli andamenti 
+settimanali o stagionali tipici dei sistemi idrici. Grazie alla capacità della LSTM di regolare il flusso di 
+memoria, questo tipo di rete è particolarmente adatto a catturare segnali che si manifestano con ritardo o hanno 
+un effetto cumulativo.
 
-Per migliorare ulteriormente le prestazioni predittive del modello, abbiamo integrato un meccanismo di ottimizzazione automatica degli iperparametri basato su \textit{Continuous Particle Swarm Optimization} (CPSO). Tale approccio consente un’esplorazione efficiente dello spazio delle possibili configurazioni, selezionando la combinazione che minimizza l’errore di previsione.
+Per migliorare ulteriormente le prestazioni predittive del modello, abbiamo integrato un meccanismo di ottimizzazione 
+automatica degli iperparametri basato su \textit{Continuous Particle Swarm Optimization} (CPSO). Tale approccio 
+consente un’esplorazione efficiente dello spazio delle possibili configurazioni, selezionando la combinazione che 
+minimizza l’errore di previsione.
 
-Le caratteristiche architetturali delle LSTM, insieme alle formulazioni matematiche e alle strategie di apprendimento adottate, sono state implementate seguendo fedelmente quanto riportato in letteratura~\cite{hochreiter1997long, graves2013speech, greff2017lstm}.
+Le caratteristiche architetturali delle LSTM, insieme alle formulazioni matematiche e alle strategie di 
+apprendimento adottate, sono state implementate seguendo fedelmente quanto riportato in 
+letteratura~\cite{hochreiter1997long, graves2013speech, greff2017lstm}.
 
 \section{Introduzione e Definizione del Problema}
 
-Negli ultimi anni, algoritmi di ottimizzazione ispirati all’intelligenza collettiva, come il \textit{Particle Swarm Optimization} (PSO), si sono affermati come strumenti efficaci per affrontare questi problemi~\cite{kennedy1995particle, eberhart2001pso}. Tuttavia, quando la funzione obiettivo richiede un costo computazionale elevato — come avviene nel caso dell’addestramento iterativo di un modello LSTM — il tempo di valutazione diventa un collo di bottiglia significativo.
+Negli ultimi anni, algoritmi di ottimizzazione ispirati all’intelligenza collettiva, come il 
+\textit{Particle Swarm Optimization} (PSO), si sono affermati come strumenti efficaci per affrontare questi 
+problemi~\cite{kennedy1995particle, eberhart2001pso}. Tuttavia, quando la funzione obiettivo richiede un costo 
+computazionale elevato — come avviene nel caso dell’addestramento iterativo di un modello LSTM — il tempo di 
+valutazione diventa un collo di bottiglia significativo.
 
-Per superare questo limite, proponiamo un approccio distribuito che sfrutta una variante continua e parallela del PSO, denominata CPSO. L’obiettivo è sfruttare il parallelismo intrinseco dell’algoritmo swarm-based distribuendo il carico computazionale su più core CPU e introducendo un meccanismo di cooperazione asincrona tra sottopopolazioni evolutive, secondo il paradigma del \textit{modello a isole} (\textit{Island Model})~\cite{cantupaz1998survey, tomassini2005spatially}.
+Per superare questo limite, proponiamo un approccio distribuito che sfrutta una variante continua e parallela del 
+PSO, denominata CPSO. L’obiettivo è sfruttare il parallelismo intrinseco dell’algoritmo swarm-based distribuendo 
+il carico computazionale su più core CPU e introducendo un meccanismo di cooperazione asincrona tra sottopopolazioni 
+evolutive, secondo il paradigma del \textit{modello a isole} (\textit{Island Model})~\cite{cantupaz1998survey, tomassini2005spatially}.
 
-Il principio alla base consiste nel suddividere lo swarm in sottoinsiemi (le “isole”), ciascuno dei quali evolve in parallelo seguendo le regole standard del CPSO~\cite{professoressa}. A intervalli regolari, le isole si sincronizzano parzialmente condividendo le migliori soluzioni globali per guidare la ricerca collettiva, mantenendo però una diversità topologica che riduce il rischio di convergenza prematura, frequente in algoritmi swarm-based in spazi di alta dimensione~\cite{omran2005dynamic}.
+Il principio alla base consiste nel suddividere lo swarm in sottoinsiemi (le “isole”), ciascuno dei quali evolve 
+in parallelo seguendo le regole standard del CPSO~\cite{professoressa}. A intervalli regolari, le isole si 
+sincronizzano parzialmente condividendo le migliori soluzioni globali per guidare la ricerca collettiva, mantenendo 
+però una diversità topologica che riduce il rischio di convergenza prematura, frequente in algoritmi swarm-based in 
+spazi di alta dimensione~\cite{omran2005dynamic}.
 
-Nel caso studio, applichiamo questa strategia distribuita alla calibrazione automatica di un modello LSTM, definendo la funzione obiettivo come la perdita sul validation set ottenuta per una specifica configurazione degli iperparametri, quali numero di layer, dimensione dello stato nascosto, tasso di dropout e learning rate.
+Nel caso studio, applichiamo questa strategia distribuita alla calibrazione automatica di un modello LSTM, 
+definendo la funzione obiettivo come la perdita sul validation set ottenuta per una specifica configurazione degli 
+iperparametri, quali numero di layer, dimensione dello stato nascosto, tasso di dropout e learning rate.
 
 Formalmente, il problema di ottimizzazione si esprime come:
 
@@ -213,9 +240,13 @@ Formalmente, il problema di ottimizzazione si esprime come:
 \min_{\theta \in \Theta} \mathcal{L}{val}(\mathcal{M}(\theta; \mathcal{D}{train}), \mathcal{D}_{val})
 \end{equation}
 
-dove $\theta \in \Theta \subset \mathbb{R}^d$ rappresenta il vettore degli iperparametri, $\mathcal{M}(\cdot)$ è il modello LSTM, $\mathcal{D}{train}$ e $\mathcal{D}{val}$ sono rispettivamente i dataset di addestramento e validazione, e $\mathcal{L}_{val}$ è la funzione di perdita calcolata sul validation set.
+dove $\theta \in \Theta \subset \mathbb{R}^d$ rappresenta il vettore degli iperparametri, $\mathcal{M}(\cdot)$ è il 
+modello LSTM, $\mathcal{D}{train}$ e $\mathcal{D}{val}$ sono rispettivamente i dataset di addestramento e 
+validazione, e $\mathcal{L}_{val}$ è la funzione di perdita calcolata sul validation set.
 
-L’obiettivo del presente lavoro è duplice: (i) valutare l’efficacia del CPSO distribuito nell’ottimizzazione degli iperparametri di modelli LSTM su dati reali e (ii) analizzare l’impatto della parallelizzazione tramite modello a isole sia sul tempo di convergenza sia sulla qualità della soluzione ottenuta.
+L’obiettivo del presente lavoro è duplice: (i) valutare l’efficacia del CPSO distribuito nell’ottimizzazione degli 
+iperparametri di modelli LSTM su dati reali e (ii) analizzare l’impatto della parallelizzazione tramite modello a 
+isole sia sul tempo di convergenza sia sulla qualità della soluzione ottenuta.
 
 \section{Formulazione Matematica e Architettura \\Computazionale del Modello a Isole}
 
@@ -259,7 +290,8 @@ La funzione di migrazione $\mu$ agisce come segue:
 \[
 \mu: \mathcal{P}_i \times \mathcal{P}_j \rightarrow \mathcal{P}_j, \quad \mu(S_i, \mathcal{P}_j) = \mathcal{P}_j'
 \]
-dove $S_i \subseteq \mathcal{P}_i$ è un sottoinsieme degli individui migliori (secondo $f^{(i)}$), e i loro corrispettivi rimpiazzano i peggiori individui in $\mathcal{P}_j$ come discusso in \cite{alba2002parallelism}.
+dove $S_i \subseteq \mathcal{P}_i$ è un sottoinsieme degli individui migliori (secondo $f^{(i)}$), e i loro 
+corrispettivi rimpiazzano i peggiori individui in $\mathcal{P}_j$ come discusso in \cite{alba2002parallelism}.
 
 Il processo iterativo globale può quindi essere riassunto come:
 
@@ -287,7 +319,9 @@ sincronizzata ogni $T_m$ iterazioni, il costo teorico diventa:
 dove $C_{migrazione}$ è legato al costo della comunicazione e sincronizzazione, che può essere ridotto 
 sfruttando modelli asincroni o a bassa frequenza di migrazione, come suggerito in \cite{cantupaz1998survey}.
 
-Implementazioni efficienti sono state sviluppate usando paradigmi di memoria condivisa (es. \texttt{multiprocessing} in Python) o memoria distribuita (es. MPI), ottenendo significativi guadagni in termini di scalabilità \cite{alba2002parallelism, li2019openbox}.
+Implementazioni efficienti sono state sviluppate usando paradigmi di memoria condivisa 
+(es. \texttt{multiprocessing} in Python) o memoria distribuita (es. MPI), ottenendo significativi guadagni in 
+termini di scalabilità \cite{alba2002parallelism, li2019openbox}.
 
 \subsection{Benefici e Considerazioni}
 
@@ -380,7 +414,7 @@ delle migliori particelle da $\mathcal{P}_k$ e sostituire le peggiori in $\mathc
 
 L'implementazione parallela è ottenibile con paradigmi a memoria condivisa, come 
 \texttt{multiprocessing} in Python o \texttt{OpenMP}/MPI in C++. Le strutture dati per la migrazione 
-possono usare code FIFO, semafori o oggetti condivisi \\(\texttt{Manager.Queue} in Python). 
+possono usare code FIFO, semafori o oggetti condivisi (\texttt{Manager.Queue} in Python). 
 La sincronizzazione può essere sincrona (bloccante) o asincrona, a seconda dell’efficienza desiderata e 
 del tipo di hardware.
 
