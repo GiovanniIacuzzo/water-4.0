@@ -17,6 +17,88 @@
 \sloppy
 \maketitle
 
+\section{Obiettivo Predittivo e Approccio Proposto}
+
+L'obiettivo di questo studio è stimare in modo continuo l’ammontare complessivo di perdita idrica 
+nella rete, inteso come somma delle dispersioni simulate lungo i diversi collegamenti. L’analisi si 
+basa su sequenze temporali multivariate acquisite da sensori distribuiti sul sistema idrico.
+
+A tal fine, è stato sviluppato un modello basato su Long Short-Term Memory (LSTM), con l’obiettivo 
+di prevedere, a partire da una sequenza storica di osservazioni, la quantità attesa di perdita 
+idrica al passo temporale successivo. Ogni input al modello è rappresentato da una sequenza 
+temporale multivariata di dimensione $(T, F)$, dove $T$ è la lunghezza della finestra temporale e 
+$F$ il numero di feature disponibili.
+
+L'output del modello è un singolo valore scalare $\hat{y}_{T+1}$, che rappresenta la previsione 
+della perdita idrica al tempo $T+1$.
+
+A differenza dei metodi tradizionali, che si concentrano prevalentemente sulla rilevazione binaria 
+di anomalie~\cite{piller2020}, l’approccio proposto mira a quantificare l’intensità del fenomeno 
+nel tempo. Questo tipo di previsione permette di intercettare variazioni graduali, fornendo una 
+misura continua della severità delle perdite, utile per pianificare interventi mirati e 
+tempestivi~\cite{candelieri2016, soldevila2016leak}.
+
+Una stima continua di questo tipo abilita strategie di controllo predittivo, manutenzione proattiva 
+e sistemi di allerta precoce, configurandosi come uno strumento di supporto decisionale avanzato 
+per i gestori della rete. Inoltre, l’adozione di modelli di deep learning come le LSTM consente di 
+affrontare efficacemente la complessità e la non linearità dei dati idraulici, garantendo una buona 
+capacità di generalizzazione anche in presenza di variabilità stagionali o dinamiche anomale~\cite{bao2019}.
+
+\section{Definizione del Problema}
+
+Negli ultimi anni, algoritmi ispirati all’intelligenza collettiva, come il \textit{Particle Swarm Optimization} 
+(PSO), si sono dimostrati efficaci nell'affrontare problemi di ottimizzazione complessi~\cite{kennedy1995particle, 
+eberhart2001pso}. Tuttavia, quando la funzione obiettivo comporta un elevato costo computazionale 
+come nel caso dell’addestramento iterativo di modelli LSTM il tempo necessario per la valutazione 
+delle soluzioni rappresenta un serio collo di bottiglia.
+
+Per affrontare questo limite, proponiamo un approccio distribuito basato su una variante parallela e 
+continua del PSO, nota come Continuous PSO (CPSO). L’idea centrale è sfruttare il parallelismo 
+intrinseco dell’algoritmo swarm-based distribuendo il carico computazionale su più core CPU. A tale 
+scopo, adottiamo il paradigma del \textit{modello a isole} (\textit{Island Model})~\cite{cantupaz1998survey, 
+tomassini2005spatially}, che introduce un meccanismo di cooperazione asincrona tra sottopopolazioni 
+evolutive.
+
+In questo contesto, lo swarm viene suddiviso in sottoinsiemi indipendenti (le “isole”), ciascuno dei 
+quali evolve in parallelo secondo le regole canoniche del CPSO~\cite{Ricciardello2020}. A intervalli 
+regolari, le isole effettuano una sincronizzazione parziale mediante scambio delle migliori soluzioni 
+globali. Questo meccanismo favorisce la diversità topologica e riduce il rischio di convergenza prematura, 
+problematica frequente negli algoritmi swarm-based applicati a spazi ad alta dimensionalità~\cite{omran2005dynamic}.
+
+Il \textit{modello a isole} costituisce un’estensione naturale degli approcci evolutivi e swarm-based, in cui 
+la popolazione globale è suddivisa in sottopopolazioni autonome che evolvono in parallelo. La comunicazione 
+tra isole avviene tramite \textit{migrazione} periodica delle migliori soluzioni, bilanciando l'esplorazione 
+distribuita con la cooperazione tra i processi~\cite{tomassini2005spatially, cantupaz1998survey}.
+
+Nel caso di studio, questa strategia viene applicata alla calibrazione automatica di un modello LSTM. 
+La funzione obiettivo è definita come la perdita sul validation set per una specifica configurazione 
+di iperparametri, tra cui: numero di layer, dimensione dello stato nascosto, tasso di dropout e learning 
+rate.
+
+La formulazione classica del CPSO~\cite{Ricciardello2020} descrive l’evoluzione delle particelle come la 
+soluzione di un problema di Cauchy a coefficienti costanti a tratti. Tale approccio si è dimostrato 
+superiore rispetto al PSO standard in termini di probabilità di successo e rapidità di convergenza, in 
+particolare in problemi ad alta dimensionalità e con funzioni obiettivo non lineari e multimodali.
+
+Per estendere questi vantaggi anche in ambienti paralleli, proponiamo un’implementazione distribuita del 
+CPSO secondo il paradigma del \textit{modello a isole}, denominata \textit{Island-CPSO}. L’algoritmo 
+suddivide lo swarm in sottopopolazioni indipendenti che evolvono in parallelo e si sincronizzano 
+periodicamente attraverso meccanismi di migrazione.
+
+Formalmente, il problema di ottimizzazione si esprime come:
+
+\begin{equation}
+\min_{\theta \in \Theta} \mathcal{L}{val}(\mathcal{M}(\theta; \mathcal{D}{train}), \mathcal{D}_{val})
+\end{equation}
+
+dove $\theta \in \Theta \subset \mathbb{R}^d$ rappresenta il vettore degli iperparametri, $\mathcal{M}(\cdot)$ è il 
+modello LSTM, $\mathcal{D}{train}$ e $\mathcal{D}{val}$ sono rispettivamente i dataset di addestramento e 
+validazione, e $\mathcal{L}_{val}$ è la funzione di perdita calcolata sul validation set.
+
+L’obiettivo del presente lavoro è duplice: (i) valutare l’efficacia del CPSO distribuito nell’ottimizzazione degli 
+iperparametri di modelli LSTM su dati reali e (ii) analizzare l’impatto della parallelizzazione tramite modello a 
+isole sia sul tempo di convergenza sia sulla qualità della soluzione ottenuta.
+
 \section{Dataset Utilizzato}
 
 Il presente studio si avvale del dataset rilasciato nell'ambito della competizione internazionale 
@@ -49,59 +131,31 @@ temporale multivariata coerente, normalizzata tramite \texttt{StandardScaler}, e
 in finestre mobili di lunghezza fissa (\texttt{seq\_len}). A ciascuna finestra di input è 
 associato, come target, il valore della perdita totale nel timestamp successivo.
 
-\section{Obiettivo Predittivo e Approccio Proposto}
-
-L’obiettivo di questo lavoro è la previsione della quantità complessiva di perdita idrica nel sistema, 
-definita come somma delle perdite simulate lungo i vari collegamenti della rete. Il modello si basa 
-sull’osservazione congiunta e multivariata delle dinamiche temporali relative a domanda, pressione, 
-livello e portata, acquisite attraverso sensori distribuiti.
-
-A differenza di approcci tradizionali focalizzati esclusivamente sulla rilevazione binaria della perdita 
-(presenza o assenza di anomalia)~\cite{piller2020}, l’approccio adottato mira alla stima anticipata 
-dell’intensità del fenomeno. Questo consente di ottenere una misura continua della perdita nel tempo, 
-modellandone la gravità e rendendo possibile l’adozione di strategie di controllo 
-predittivo~\cite{candelieri2016}, manutenzione proattiva, o sistemi di allerta precoce.
-
-La previsione quantitativa della perdita, piuttosto che la sola classificazione, permette infatti di 
-cogliere anche l’evoluzione graduale e sottile di anomalie difficilmente rilevabili con metodi 
-statici~\cite{soldevila2016leak}. Inoltre, fornisce un’informazione di maggiore utilità operativa per 
-i gestori della rete, che possono così prioritizzare gli interventi in base alla severità stimata.
-
-L’integrazione di modelli di deep learning, come le LSTM, con dati eterogenei in input si è già 
-dimostrata promettente in vari contesti predittivi legati ai sistemi idrici~\cite{bao2019}, fornendo 
-capacità di generalizzazione anche in presenza di dinamiche non lineari e variabilità stagionale.
-
 \section{Architettura del Modello LSTM}
 
-La natura sequenziale dei dati acquisiti in una rete idrica dove le misurazioni si susseguono 
-regolarmente nel tempo rende particolarmente adatte le \emph{reti neurali ricorrenti} (Recurrent 
-Neural Networks, RNN), un tipo di architettura progettata per elaborare dati temporali o 
-sequenziali~\cite{elman1990finding}. A differenza delle reti feedforward tradizionali, le RNN 
-introducono un meccanismo di memoria interna, che consente al modello di mantenere una rappresentazione 
-dello stato passato e di apprendere dipendenze temporali.
+L'analisi di dati provenienti da una rete idrica, raccolti a intervalli regolari, richiede modelli 
+capaci di catturare la natura sequenziale del fenomeno osservato. Le \emph{reti neurali ricorrenti} 
+(Recurrent Neural Networks, RNN) rispondono a questa esigenza introducendo una struttura con memoria 
+interna, che consente di apprendere relazioni temporali tra gli input successivi~\cite{elman1990finding}. 
+Tuttavia, le RNN classiche faticano a gestire dipendenze a lungo termine a causa di problemi di instabilità 
+numerica nella propagazione del gradiente~\cite{bengio1994learning}.
 
-Tuttavia, le RNN standard presentano notevoli difficoltà nell’apprendimento di relazioni a lungo 
-termine, a causa di problemi noti come il \emph{vanishing gradient} e 
-l’\emph{exploding gradient}~\cite{bengio1994learning}, che ostacolano la propagazione efficace del 
-segnale di apprendimento nel tempo.
+Per affrontare tali limiti, vengono utilizzate le \emph{Long Short-Term Memory networks} (LSTM), una 
+variante delle RNN introdotta da Hochreiter e Schmidhuber~\cite{hochreiter1997long}, specificamente 
+progettata per conservare informazioni rilevanti anche a distanza di molti passi temporali. Le LSTM 
+integrano nella loro architettura un meccanismo di controllo basato su tre componenti fondamentali 
+i cosiddetti \textit{gate} che regolano dinamicamente l'accesso e la conservazione delle informazioni 
+nella memoria della rete.
 
-Per superare tali limitazioni, si fa ricorso alle \emph{Long Short-Term Memory networks} (LSTM), una 
-variante evoluta delle RNN introdotta da Hochreiter e Schmidhuber nel 1997~\cite{hochreiter1997long}. 
-Le LSTM sono progettate per apprendere dinamiche temporali anche su orizzonti lunghi, grazie a una 
-struttura interna più complessa basata su celle di memoria e porte di controllo.
 
 \subsection{Struttura della Cella LSTM}
 
-Le \textit{Long Short-Term Memory} (LSTM) sono una particolare architettura di reti neurali ricorrenti 
-(RNN), nata con l’obiettivo di superare le difficoltà delle RNN tradizionali nel catturare dipendenze a 
-lungo termine.
-
-A differenza delle RNN classiche, le celle LSTM sono dotate di una struttura interna pensata per 
-mantenere e aggiornare selettivamente uno stato di memoria nel tempo. Questo è possibile grazie 
-all’impiego di tre componenti fondamentali, chiamati \textit{gate}, che regolano dinamicamente il flusso 
-delle informazioni. In particolare, il forget gate determina quali contenuti della memoria passata 
-devono essere eliminati; l’input gate stabilisce quali nuove informazioni devono essere integrate; 
-infine, l’output gate seleziona cosa dev’essere restituito come risultato del passo corrente.
+Ogni cella LSTM riceve in input lo stato precedente e il dato corrente, e aggiorna selettivamente 
+la propria memoria, questo è possibile grazie all’impiego di tre componenti fondamentali, chiamati 
+\textit{gate}, che regolano dinamicamente il flusso delle informazioni. In particolare, il forget 
+gate determina quali contenuti della memoria passata devono essere eliminati; l’input gate stabilisce 
+quali nuove informazioni devono essere integrate; infine, l’output gate seleziona cosa dev’essere 
+restituito come risultato del passo corrente.
 
 Tutte queste operazioni si basano su trasformazioni affini dei dati di input e dell’output precedente, 
 seguite da funzioni di attivazione non lineari, generalmente la sigmoide o la tangente iperbolica. 
@@ -148,8 +202,7 @@ h_t = o_t \odot \tanh(c_t)
 \end{equation}
 
 Questa sequenza di operazioni consente alla cella LSTM di filtrare, aggiornare e trasmettere informazioni 
-nel tempo in modo controllato e flessibile, rendendola particolarmente efficace per la modellazione di 
-fenomeni sequenziali complessi, in cui la memoria di lungo termine gioca un ruolo centrale.
+nel tempo in modo controllato e flessibile.
 
 Per completezza, si riportano le principali notazioni utilizzate: $x_t \in \mathbb{R}^F$ è il vettore di 
 input al tempo $t$, con $F$ caratteristiche; $h_{t-1}$ è l’output del passo precedente; $c_t$ rappresenta 
@@ -165,16 +218,6 @@ utile per visualizzare il flusso interno delle informazioni.
     \caption{Struttura interna di una cella LSTM, con evidenza dei tre gate principali e dello stato di memoria.}
     \label{fig:lstm_cell}
 \end{figure}
-
-\subsection{Modello Proposto per la Previsione delle Perdite}
-
-Il modello LSTM sviluppato per questo studio ha l'obiettivo di prevedere, a partire da una sequenza 
-temporale di osservazioni, la quantità di perdita idrica attesa al passo successivo. Ogni input è una 
-sequenza temporale multivariata di dimensione $(T, F)$, dove $T$ rappresenta la lunghezza della finestra 
-temporale considerata e $F$ il numero totale di feature (es. flusso, pressione, domanda, livello, etc.).
-
-L'output del modello è un singolo valore scalare $\hat{y}_{T+1}$, che rappresenta la previsione della 
-perdita idrica al tempo $T+1$.
 
 L’architettura del modello è strutturata come segue:
 
@@ -193,69 +236,6 @@ previsione $\hat{y}_{T+1}$ e il valore reale $y_{T+1}$, secondo l’obiettivo:
 \end{equation}
 
 dove $N$ è il numero totale di esempi nella finestra mobile di addestramento.
-
-\subsection{Riflessioni sull’Architettura}
-
-L’impiego di una rete LSTM profonda permette di modellare efficacemente sia le correlazioni a breve termine, 
-come le fluttuazioni giornaliere di pressione o domanda, sia quelle a lungo termine, quali gli andamenti 
-settimanali o stagionali tipici dei sistemi idrici. Grazie alla capacità della LSTM di regolare il flusso di 
-memoria, questo tipo di rete è particolarmente adatto a catturare segnali che si manifestano con ritardo o hanno 
-un effetto cumulativo.
-
-Per migliorare ulteriormente le prestazioni predittive del modello, abbiamo integrato un meccanismo di ottimizzazione 
-automatica degli iperparametri basato su \textit{Continuous Particle Swarm Optimization} (CPSO). Tale approccio 
-consente un’esplorazione efficiente dello spazio delle possibili configurazioni, selezionando la combinazione che 
-minimizza l’errore di previsione.
-
-Le caratteristiche architetturali delle LSTM, insieme alle formulazioni matematiche e alle strategie di 
-apprendimento adottate, sono state implementate seguendo fedelmente quanto riportato in 
-letteratura~\cite{hochreiter1997long, graves2013speech, greff2017lstm}.
-
-\section{Introduzione e Definizione del Problema}
-
-Negli ultimi anni, algoritmi di ottimizzazione ispirati all’intelligenza collettiva, come il 
-\textit{Particle Swarm Optimization} (PSO), si sono affermati come strumenti efficaci per affrontare questi 
-problemi~\cite{kennedy1995particle, eberhart2001pso}. Tuttavia, quando la funzione obiettivo richiede un costo 
-computazionale elevato — come avviene nel caso dell’addestramento iterativo di un modello LSTM — il tempo di 
-valutazione diventa un collo di bottiglia significativo.
-
-Per superare questo limite, proponiamo un approccio distribuito che sfrutta una variante continua e parallela del 
-PSO, denominata CPSO. L’obiettivo è sfruttare il parallelismo intrinseco dell’algoritmo swarm-based distribuendo 
-il carico computazionale su più core CPU e introducendo un meccanismo di cooperazione asincrona tra sottopopolazioni 
-evolutive, secondo il paradigma del \textit{modello a isole} (\textit{Island Model})~\cite{cantupaz1998survey, tomassini2005spatially}.
-
-Il principio alla base consiste nel suddividere lo swarm in sottoinsiemi (le “isole”), ciascuno dei quali evolve 
-in parallelo seguendo le regole standard del CPSO~\cite{professoressa}. A intervalli regolari, le isole si 
-sincronizzano parzialmente condividendo le migliori soluzioni globali per guidare la ricerca collettiva, mantenendo 
-però una diversità topologica che riduce il rischio di convergenza prematura, frequente in algoritmi swarm-based in 
-spazi di alta dimensione~\cite{omran2005dynamic}.
-
-Nel caso studio, applichiamo questa strategia distribuita alla calibrazione automatica di un modello LSTM, 
-definendo la funzione obiettivo come la perdita sul validation set ottenuta per una specifica configurazione degli 
-iperparametri, quali numero di layer, dimensione dello stato nascosto, tasso di dropout e learning rate.
-
-Formalmente, il problema di ottimizzazione si esprime come:
-
-\begin{equation}
-\min_{\theta \in \Theta} \mathcal{L}{val}(\mathcal{M}(\theta; \mathcal{D}{train}), \mathcal{D}_{val})
-\end{equation}
-
-dove $\theta \in \Theta \subset \mathbb{R}^d$ rappresenta il vettore degli iperparametri, $\mathcal{M}(\cdot)$ è il 
-modello LSTM, $\mathcal{D}{train}$ e $\mathcal{D}{val}$ sono rispettivamente i dataset di addestramento e 
-validazione, e $\mathcal{L}_{val}$ è la funzione di perdita calcolata sul validation set.
-
-L’obiettivo del presente lavoro è duplice: (i) valutare l’efficacia del CPSO distribuito nell’ottimizzazione degli 
-iperparametri di modelli LSTM su dati reali e (ii) analizzare l’impatto della parallelizzazione tramite modello a 
-isole sia sul tempo di convergenza sia sulla qualità della soluzione ottenuta.
-
-\section{Formulazione Matematica e Architettura \\Computazionale del Modello a Isole}
-
-Il \textit{modello a isole} (\textit{Island Model}) rappresenta un'estensione parallela degli algoritmi 
-evolutivi (EA) e swarm-based, in cui la popolazione globale viene suddivisa in sottopopolazioni 
-indipendenti, denominate \textit{isole}, che evolvono autonomamente secondo le regole canoniche 
-dell'algoritmo di base. Periodicamente, le isole scambiano informazioni tramite un meccanismo di 
-\textit{migrazione}, con l’obiettivo di coniugare l'esplorazione distribuita dello spazio delle soluzioni 
-con una cooperazione adattiva tra i processi \cite{tomassini2005spatially, cantupaz1998survey}.
 
 \subsection{Definizione Formale}
 
@@ -340,23 +320,9 @@ numero di individui migranti è critica e deve essere ottimizzata empiricamente 
 
 \section{Pseudo-codice dell'Algoritmo Island-CPSO}
 
-La formulazione classica del Continuous Particle Swarm Optimization (CPSO), proposta in \cite{professoressa}, 
-descrive l'evoluzione delle particelle come soluzione di un problema di Cauchy a coefficienti costanti a tratti. 
-Tale formulazione ha mostrato superiorità rispetto al PSO standard in termini di probabilità di successo 
-e tempi di convergenza, soprattutto in problemi ad alta dimensionalità e con funzioni obiettivo non 
-lineari e multimodali.
-
-Per estendere i benefici del CPSO anche in ambienti computazionali paralleli, in questo lavoro 
-proponiamo una sua implementazione distribuita secondo il paradigma del \textit{modello a isole} 
-(\textit{Island Model}) \cite{tomassini2005spatially, cantupaz1998survey}. L'algoritmo risultante, 
-denominato \textit{Island-CPSO}, suddivide lo swarm in sottoinsiemi evolutivi indipendenti, che si 
-sincronizzano periodicamente tramite migrazione.
-
-\subsection{Struttura Computazionale}
-
 Ogni isola è associata a un processo parallelo e contiene un sotto-swarm che evolve secondo la 
 formulazione continua del CPSO. Ogni sotto-swarm segue localmente le equazioni differenziali descritte 
-in \cite{professoressa}, ed effettua una valutazione autonoma della funzione obiettivo. Ad ogni 
+in \cite{Ricciardello2020}, ed effettua una valutazione autonoma della funzione obiettivo. Ad ogni 
 intervallo di migrazione $T_m$, le isole si scambiano le migliori posizioni locali e aggiornano il 
 proprio stato globale, favorendo così una convergenza cooperativa.
 
@@ -376,7 +342,7 @@ Suddividi lo swarm globale in $K$ isole: $\mathcal{P} = \bigcup_{k=1}^K \mathcal
     Calcola $p_{\text{ib}}$ e $p_{\text{gb}}$ iniziali\\
     \For{$t = 1$ \KwTo $T$}{
         Calcola $f_k(t) = c_c r_1(t) \cdot p_{\text{ib}} + c_s r_2(t) \cdot p_{\text{gb}}$\\
-        Calcola $\mu(t)$, $\zeta(t)$, $\omega(t)$ secondo \cite{professoressa}\\
+        Calcola $\mu(t)$, $\zeta(t)$, $\omega(t)$ secondo \cite{Ricciardello2020}\\
         Risolvi il sistema ODE:
         \[
             \ddot{p}(t) + 2\zeta(t)\omega(t)\dot{p}(t) + \omega(t)^2 p(t) = f_k(t)
