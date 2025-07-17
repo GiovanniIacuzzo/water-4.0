@@ -11,7 +11,7 @@
 
 \title{Progetto WATER 4.0}
 \author{Giovanni Giuseppe Iacuzzo}
-\date{13-07-2025}
+\date{17-07-2025}
 
 \begin{document}
 \sloppy
@@ -48,11 +48,9 @@ capacità di generalizzazione anche in presenza di variabilità stagionali o din
 
 Negli ultimi anni, algoritmi ispirati all’intelligenza collettiva, come il \textit{Particle Swarm Optimization} 
 (PSO), si sono dimostrati efficaci nell'affrontare problemi di ottimizzazione complessi~\cite{kennedy1995particle, 
-eberhart2001pso}. Tuttavia, quando la funzione obiettivo comporta un elevato costo computazionale 
-come nel caso dell’addestramento iterativo di modelli LSTM il tempo necessario per la valutazione 
-delle soluzioni rappresenta un serio collo di bottiglia.
+eberhart2001pso}. 
 
-Per affrontare questo limite, proponiamo un approccio distribuito basato su una variante parallela e 
+In questo studio, proponiamo un approccio distribuito basato su una variante parallela e 
 continua del PSO, nota come Continuous PSO (CPSO). L’idea centrale è sfruttare il parallelismo 
 intrinseco dell’algoritmo swarm-based distribuendo il carico computazionale su più core CPU. A tale 
 scopo, adottiamo il paradigma del \textit{modello a isole} (\textit{Island Model})~\cite{cantupaz1998survey, 
@@ -70,11 +68,6 @@ la popolazione globale è suddivisa in sottopopolazioni autonome che evolvono in
 tra isole avviene tramite \textit{migrazione} periodica delle migliori soluzioni, bilanciando l'esplorazione 
 distribuita con la cooperazione tra i processi~\cite{tomassini2005spatially, cantupaz1998survey}.
 
-Nel caso di studio, questa strategia viene applicata alla calibrazione automatica di un modello LSTM. 
-La funzione obiettivo è definita come la perdita sul validation set per una specifica configurazione 
-di iperparametri, tra cui: numero di layer, dimensione dello stato nascosto, tasso di dropout e learning 
-rate.
-
 La formulazione classica del CPSO~\cite{Ricciardello2020} descrive l’evoluzione delle particelle come la 
 soluzione di un problema di Cauchy a coefficienti costanti a tratti. Tale approccio si è dimostrato 
 superiore rispetto al PSO standard in termini di probabilità di successo e rapidità di convergenza, in 
@@ -84,20 +77,6 @@ Per estendere questi vantaggi anche in ambienti paralleli, proponiamo un’imple
 CPSO secondo il paradigma del \textit{modello a isole}, denominata \textit{Island-CPSO}. L’algoritmo 
 suddivide lo swarm in sottopopolazioni indipendenti che evolvono in parallelo e si sincronizzano 
 periodicamente attraverso meccanismi di migrazione.
-
-Formalmente, il problema di ottimizzazione si esprime come:
-
-\begin{equation}
-\min_{\theta \in \Theta} \mathcal{L}{val}(\mathcal{M}(\theta; \mathcal{D}{train}), \mathcal{D}_{val})
-\end{equation}
-
-dove $\theta \in \Theta \subset \mathbb{R}^d$ rappresenta il vettore degli iperparametri, $\mathcal{M}(\cdot)$ è il 
-modello LSTM, $\mathcal{D}{train}$ e $\mathcal{D}{val}$ sono rispettivamente i dataset di addestramento e 
-validazione, e $\mathcal{L}_{val}$ è la funzione di perdita calcolata sul validation set.
-
-L’obiettivo del presente lavoro è duplice: (i) valutare l’efficacia del CPSO distribuito nell’ottimizzazione degli 
-iperparametri di modelli LSTM su dati reali e (ii) analizzare l’impatto della parallelizzazione tramite modello a 
-isole sia sul tempo di convergenza sia sulla qualità della soluzione ottenuta.
 
 \section{Dataset Utilizzato}
 
@@ -147,6 +126,20 @@ integrano nella loro architettura un meccanismo di controllo basato su tre compo
 i cosiddetti \textit{gate} che regolano dinamicamente l'accesso e la conservazione delle informazioni 
 nella memoria della rete.
 
+Nel caso di studio, la strategia dell'\emph{Island-CPSO} viene applicata alla calibrazione automatica di un modello LSTM. 
+La funzione obiettivo è definita come la perdita sul validation set per una specifica configurazione 
+di iperparametri, tra cui: numero di layer, dimensione dello stato nascosto, tasso di dropout e learning 
+rate.
+
+Formalmente, il problema di ottimizzazione si esprime come:
+
+\begin{equation}
+\min_{\theta \in \Theta} \mathcal{L}{val}(\mathcal{M}(\theta; \mathcal{D}{train}), \mathcal{D}_{val})
+\end{equation}
+
+dove $\theta \in \Theta \subset \mathbb{R}^d$ rappresenta il vettore degli iperparametri, $\mathcal{M}(\cdot)$ è il 
+modello LSTM, $\mathcal{D}{train}$ e $\mathcal{D}{val}$ sono rispettivamente i dataset di addestramento e 
+validazione, e $\mathcal{L}_{val}$ è la funzione di perdita calcolata sul validation set.
 
 \subsection{Struttura della Cella LSTM}
 
@@ -237,9 +230,9 @@ previsione $\hat{y}_{T+1}$ e il valore reale $y_{T+1}$, secondo l’obiettivo:
 
 dove $N$ è il numero totale di esempi nella finestra mobile di addestramento.
 
-\subsection{Definizione Formale}
+\section{Modello Island}
 
-Il modello si fonda su una suddivisione della popolazione globale $\mathcal{P}$ in $K$ sottopopolazioni 
+Il modello a isole si fonda su una suddivisione della popolazione globale $\mathcal{P}$ in $K$ sottopopolazioni 
 disgiunte (isole), come proposto in \cite{alba2002parallelism, tomassini2005spatially}:
 \begin{equation}
 \mathcal{P} = \bigcup_{k=1}^K \mathcal{P}_k \quad \text{con} \quad \mathcal{P}_i \cap \mathcal{P}_j = \emptyset \quad \forall i \neq j
@@ -258,8 +251,6 @@ secondo una funzione di aggiornamento $\phi_A$, come descritto in \cite{kennedy1
 \begin{equation}
 \mathcal{P}_k^{(t+1)} = \phi_A(\mathcal{P}_k^{(t)})
 \end{equation}
-
-\subsection{Migrazione e Topologia}
 
 Il concetto di migrazione regolare è una delle componenti chiave del modello a isole e viene 
 generalmente attivato ogni $T_m \in \mathbb{N}$ iterazioni \cite{tomassini2005spatially}. 
@@ -388,16 +379,16 @@ del tipo di hardware.
 
 \section{Risultati ottenuti}
 
-In questa sezione si analizzano i risultati sperimentali ottenuti con il modello LSTM ottimizzato 
-mediante algoritmo CPSO, con l’obiettivo di valutarne la capacità predittiva su dati non visti e la sua 
-generale efficacia nel contesto del problema affrontato. Il modello è stato addestrato su una porzione 
-dei dati e successivamente testato su un insieme separato, rispettando una suddivisione temporale che 
-simula realisticamente un contesto di predizione futura.
+In questa sezione si analizzano i risultati ottenuti con il modello LSTM 
+ottimizzato mediante CPSO, con l’obiettivo di valutarne la capacità predittiva 
+su dati non visti e la sua generale efficacia nel contesto del problema affrontato. 
+Il modello è stato addestrato su una porzione dei dati e successivamente testato 
+su un insieme separato.
 
 Il processo di integrazione tra modello LSTM e ottimizzatore CPSO è illustrato nel diagramma di flusso 
-in Figura~\ref{fig:cpso_flowchart}. Qui viene rappresentato il ciclo iterativo in cui il CPSO genera 
-nuove configurazioni, valuta le prestazioni del modello sul set di validazione e aggiorna la popolazione 
-di particelle in base alla funzione obiettivo.
+in Figura~\ref{fig:cpso_flowchart}. Qui il CPSO genera nuove configurazioni, valuta 
+le prestazioni del modello sul set di validazione e aggiorna la popolazione di particelle 
+in base alla funzione obiettivo.
 
 \begin{figure}[H]
 \centering
@@ -417,7 +408,7 @@ Gli iperparametri ottimizzati dal CPSO includono:
 La funzione obiettivo utilizzata per guidare l’ottimizzazione è la minimizzazione della loss di validazione 
 (MSE), calcolata su un set separato rispetto a quello di training.
 
-\subsection*{Analisi della convergenza e collaborazione tra isole}
+\subsection{Analisi della convergenza e collaborazione tra isole}
 
 La Figura~\ref{fig:convergenza_isole} mostra l'andamento delle curve di convergenza per ciascuna isola. 
 Si osserva una progressiva riduzione della loss, con ogni isola che parte da condizioni iniziali differenti 
