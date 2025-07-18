@@ -20,17 +20,8 @@
 \section{Obiettivo Predittivo e Approccio Proposto}
 
 L'obiettivo di questo studio è stimare in modo continuo l’ammontare complessivo di perdita idrica 
-nella rete, inteso come somma delle dispersioni simulate lungo i diversi collegamenti. L’analisi si 
-basa su sequenze temporali multivariate acquisite da sensori distribuiti sul sistema idrico.
-
-A tal fine, è stato sviluppato un modello basato su Long Short-Term Memory (LSTM), con l’obiettivo 
-di prevedere, a partire da una sequenza storica di osservazioni, la quantità attesa di perdita 
-idrica al passo temporale successivo. Ogni input al modello è rappresentato da una sequenza 
-temporale multivariata di dimensione $(T, F)$, dove $T$ è la lunghezza della finestra temporale e 
-$F$ il numero di feature disponibili.
-
-L'output del modello è un singolo valore scalare $\hat{y}_{T+1}$, che rappresenta la previsione 
-della perdita idrica al tempo $T+1$.
+nella rete, inteso come somma delle dispersioni simulate lungo i diversi collegamenti di una rete idrica. 
+L’analisi si basa su sequenze temporali multivariate acquisite da sensori distribuiti sul sistema idrico.
 
 A differenza dei metodi tradizionali, che si concentrano prevalentemente sulla rilevazione binaria 
 di anomalie~\cite{piller2020}, l’approccio proposto mira a quantificare l’intensità del fenomeno 
@@ -40,8 +31,8 @@ tempestivi~\cite{candelieri2016, soldevila2016leak}.
 
 Una stima continua di questo tipo abilita strategie di controllo predittivo, manutenzione proattiva 
 e sistemi di allerta precoce, configurandosi come uno strumento di supporto decisionale avanzato 
-per i gestori della rete. Inoltre, l’adozione di modelli di deep learning come le LSTM consente di 
-affrontare efficacemente la complessità e la non linearità dei dati idraulici, garantendo una buona 
+per i gestori della rete. Inoltre, l’adozione di modelli di deep learning consente di 
+affrontare efficacemente la complessità e la non linearità dei dati, garantendo una buona 
 capacità di generalizzazione anche in presenza di variabilità stagionali o dinamiche anomale~\cite{bao2019}.
 
 \section{Definizione del Problema}
@@ -96,6 +87,7 @@ ispirata a condizioni operative realistiche.
 Il dataset comprende misurazioni con cadenza di 5 minuti relative a due anni consecutivi (2018--2019). 
 In questa ricerca ci si è concentrati esclusivamente sull'anno 2018, utilizzando le seguenti tipologie 
 di variabili:
+
 \begin{itemize}
     \item \textbf{Domande (Demands)}: flussi di consumo registrati da 82 dispositivi di lettura automatica.
     \item \textbf{Flussi (Flows)}: portate in ingresso/uscita rilevate da 3 sensori distribuiti.
@@ -112,24 +104,32 @@ associato, come target, il valore della perdita totale nel timestamp successivo.
 
 \section{Architettura del Modello LSTM}
 
-L'analisi di dati provenienti da una rete idrica, raccolti a intervalli regolari, richiede modelli 
-capaci di catturare la natura sequenziale del fenomeno osservato. Le \emph{reti neurali ricorrenti} 
-(Recurrent Neural Networks, RNN) rispondono a questa esigenza introducendo una struttura con memoria 
-interna, che consente di apprendere relazioni temporali tra gli input successivi~\cite{elman1990finding}. 
-Tuttavia, le RNN classiche faticano a gestire dipendenze a lungo termine a causa di problemi di instabilità 
-numerica nella propagazione del gradiente~\cite{bengio1994learning}.
+L’analisi di dati temporali provenienti da una rete idrica, raccolti a intervalli regolari, 
+richiede modelli in grado di catturare le dipendenze sequenziali tra le osservazioni. 
+Le \emph{reti neurali ricorrenti} (Recurrent Neural Networks, RNN) rispondono a questa 
+esigenza grazie alla loro struttura con memoria interna, che consente di apprendere relazioni 
+temporali tra gli input successivi~\cite{elman1990finding}. Tuttavia, le RNN tradizionali 
+presentano limiti nella gestione delle dipendenze a lungo termine, principalmente a causa di 
+problemi di vanishing e exploding gradient durante l'addestramento~\cite{bengio1994learning}.
 
-Per affrontare tali limiti, vengono utilizzate le \emph{Long Short-Term Memory networks} (LSTM), una 
-variante delle RNN introdotta da Hochreiter e Schmidhuber~\cite{hochreiter1997long}, specificamente 
-progettata per conservare informazioni rilevanti anche a distanza di molti passi temporali. Le LSTM 
-integrano nella loro architettura un meccanismo di controllo basato su tre componenti fondamentali 
-i cosiddetti \textit{gate} che regolano dinamicamente l'accesso e la conservazione delle informazioni 
-nella memoria della rete.
+Per superare tali limitazioni, viene adottata una variante delle RNN nota come 
+\emph{Long Short-Term Memory} (LSTM), introdotta da Hochreiter e 
+Schmidhuber~\cite{hochreiter1997long}. Le reti LSTM sono progettate per mantenere informazioni 
+rilevanti anche a distanza di molti passi temporali, grazie a un meccanismo interno di memoria 
+controllata. Questo meccanismo è regolato da tre componenti principali, detti \emph{gate}, 
+che modulano dinamicamente l’ingresso, la conservazione e l’uscita delle informazioni.
 
-Nel caso di studio, la strategia dell'\emph{Island-CPSO} viene applicata alla calibrazione automatica di un modello LSTM. 
-La funzione obiettivo è definita come la perdita sul validation set per una specifica configurazione 
-di iperparametri, tra cui: numero di layer, dimensione dello stato nascosto, tasso di dropout e learning 
-rate.
+Nel presente lavoro, si utilizza un modello LSTM per prevedere la quantità attesa di perdita 
+idrica al passo temporale successivo, sulla base di una sequenza storica di osservazioni. 
+Ogni input al modello è rappresentato da una sequenza temporale multivariata di dimensione 
+$(T, F)$, dove $T$ indica la lunghezza della finestra temporale e $F$ il numero di feature 
+disponibili. L’output è un singolo valore scalare $\hat{y}_{T+1}$, che rappresenta la stima 
+della perdita al tempo $T+1$.
+
+La calibrazione automatica del modello LSTM è effettuata tramite la strategia 
+\emph{Island-CPSO}. La funzione obiettivo da minimizzare è definita come la perdita sul 
+validation set per una data configurazione di iperparametri, tra cui: numero di layer, dimensione 
+dello stato nascosto, tasso di dropout e learning rate.
 
 Formalmente, il problema di ottimizzazione si esprime come:
 
@@ -298,7 +298,7 @@ termini di scalabilità \cite{alba2002parallelism, li2019openbox}.
 
 \subsection{Benefici e Considerazioni}
 
-Il modello a isole presenta i seguenti vantaggi, documentati estesamente in letteratura \cite{cantupaz1998survey, tomassini2005spatially}:
+Tra i principali vantaggi del modello a isole si possono evidenziare \cite{cantupaz1998survey, tomassini2005spatially}:
 
 \begin{itemize}
     \item \textbf{Robustezza}: le isole esplorano indipendentemente lo spazio delle soluzioni, riducendo il rischio di convergenza prematura.
@@ -309,7 +309,13 @@ Il modello a isole presenta i seguenti vantaggi, documentati estesamente in lett
 Tuttavia, la configurazione della topologia di comunicazione, della frequenza di migrazione $T_m$, e del 
 numero di individui migranti è critica e deve essere ottimizzata empiricamente \cite{alba2002parallelism}.
 
-\section{Pseudo-codice dell'Algoritmo Island-CPSO}
+L'implementazione parallela è ottenibile con paradigmi a memoria condivisa, come 
+\texttt{multiprocessing} in Python o \texttt{OpenMP}/MPI in C++. Le strutture dati per la migrazione 
+possono usare code FIFO, semafori o oggetti condivisi (\texttt{Manager.Queue} in Python). 
+La sincronizzazione può essere sincrona (bloccante) o asincrona, a seconda dell’efficienza desiderata e 
+del tipo di hardware.
+
+\section{Algoritmo Island-CPSO}
 
 Ogni isola è associata a un processo parallelo e contiene un sotto-swarm che evolve secondo la 
 formulazione continua del CPSO. Ogni sotto-swarm segue localmente le equazioni differenziali descritte 
@@ -368,14 +374,6 @@ delle migliori particelle da $\mathcal{P}_k$ e sostituire le peggiori in $\mathc
     Aggiorna $p_{\text{gb}}^{(j)}$ in base alla nuova popolazione
 }
 \end{algorithm}
-
-\subsection{Note implementative}
-
-L'implementazione parallela è ottenibile con paradigmi a memoria condivisa, come 
-\texttt{multiprocessing} in Python o \texttt{OpenMP}/MPI in C++. Le strutture dati per la migrazione 
-possono usare code FIFO, semafori o oggetti condivisi (\texttt{Manager.Queue} in Python). 
-La sincronizzazione può essere sincrona (bloccante) o asincrona, a seconda dell’efficienza desiderata e 
-del tipo di hardware.
 
 \section{Risultati ottenuti}
 
